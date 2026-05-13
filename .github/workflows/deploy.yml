@@ -43,6 +43,10 @@ jobs:
 
       - name: Upload to Roblox
         run: |
+          echo "Universe ID set: ${{ secrets.ROBLOX_UNIVERSE_ID != '' }}"
+          echo "Place ID set: ${{ secrets.ROBLOX_PLACE_ID != '' }}"
+          echo "API Key set: ${{ secrets.ROBLOX_API_KEY != '' }}"
+          echo "File size: $(wc -c < planet-miner-build.rbxl) bytes"
           RESPONSE=$(curl -s -X POST \
             "https://apis.roblox.com/universes/v1/${{ secrets.ROBLOX_UNIVERSE_ID }}/places/${{ secrets.ROBLOX_PLACE_ID }}/versions?versionType=Published" \
             -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
