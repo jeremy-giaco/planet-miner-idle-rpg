@@ -22,8 +22,8 @@ local MOON_CONFIG = {
     planet = {
         radius   = Config.PLANET_RADIUS,
         center   = Config.PLANET_CENTER,
-        color     = Color3.fromRGB(165, 163, 172),   -- pale grey lunar regolith
-        material  = Enum.Material.Rock,
+        color     = Color3.fromRGB(148, 145, 158),   -- dark grey lunar regolith
+        material  = Enum.Material.Granite,
         -- textureId = "",  -- set to a valid Roblox DecalId for crater surface detail
     },
     base = {
@@ -56,20 +56,11 @@ local function setupLighting()
     Lighting.EnvironmentSpecularScale = 0.8
     Lighting.ClockTime                = 12
     Lighting.GeographicLatitude       = 90
-    Lighting.FogStart = 3000
-    Lighting.FogEnd   = 6000
+    Lighting.FogStart = 8000
+    Lighting.FogEnd   = 12000
     Lighting.FogColor = Color3.fromRGB(2, 2, 8)     -- deep black space
 
-    -- Space sky
-    local sky = Instance.new("Sky")
-    sky.SkyboxBk = "rbxasset://textures/sky/sky512_bk.tex"
-    sky.SkyboxDn = "rbxasset://textures/sky/sky512_dn.tex"
-    sky.SkyboxFt = "rbxasset://textures/sky/sky512_ft.tex"
-    sky.SkyboxLf = "rbxasset://textures/sky/sky512_lf.tex"
-    sky.SkyboxRt = "rbxasset://textures/sky/sky512_rt.tex"
-    sky.SkyboxUp = "rbxasset://textures/sky/sky512_up.tex"
-    sky.StarCount = 4000
-    sky.Parent    = Lighting
+    -- No Sky object → Roblox renders a pure black void, letting FogColor/Ambient give the space feel
 
     local bloom = Instance.new("BloomEffect")
     bloom.Intensity = 0.4; bloom.Size = 24; bloom.Threshold = 0.95
