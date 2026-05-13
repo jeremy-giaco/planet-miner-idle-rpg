@@ -40,12 +40,12 @@ jobs:
             -d "{\"tag_name\":\"$TAG\",\"name\":\"Release #${{ github.run_number }}\",\"body\":\"Automated release from ${{ github.sha }}\"}" \
             > release.json
           cat release.json
-          UPLOAD_URL=$(grep -o '"upload_url":"[^"]*"' release.json | sed 's/"upload_url":"//;s/".*//' | sed 's/{.*}//')
-          echo "Upload URL: $UPLOAD_URL"
+          RELEASE_ID=$(grep -o '"id":[0-9]*' release.json | head -1 | grep -o '[0-9]*')
+          echo "Release ID: $RELEASE_ID"
           curl -s -X POST \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/octet-stream" \
-            "${UPLOAD_URL}?name=planet-miner-build.rbxl" \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets?name=planet-miner-build.rbxl" \
             --data-binary @planet-miner-build.rbxl \
             > asset.json
           cat asset.json
