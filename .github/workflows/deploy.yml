@@ -9,7 +9,9 @@ jobs:
   deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
-    environment: production
+    environment: prod
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -29,20 +31,39 @@ jobs:
         run: rojo build default.project.json -o planet-miner-build.rbxl
 
       - name: Create GitHub Release
-        id: release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: release-${{ github.run_number }}
-          name: "Release #${{ github.run_number }}"
-          body: "Automated release from commit ${{ github.sha }}"
-          files: planet-miner-build.rbxl
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="release-${{ github.run_number }}-${{ github.run_attempt }}"
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://api.github.com/repos/${{ github.repository }}/releases \
+            -d "{\"tag_name\":\"$TAG\",\"name\":\"Release #${{ github.run_number }} (${{ github.sha }})\",\"body\":\"Automated release from ${{ github.sha }}\"}" \
+            > release.json
+          cat release.json
+          RELEASE_ID=$(grep -o '"id":[0-9]*' release.json | head -1 | grep -o '[0-9]*')
+          echo "Release ID: $RELEASE_ID"
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets?name=planet-miner-build.rbxl" \
+            --data-binary @planet-miner-build.rbxl \
+            > asset.json
+          cat asset.json
 
       - name: Upload to Roblox
         run: |
-          curl -X POST \
-            "https://apis.roblox.com/universes/v1/${{ secrets.ROBLOX_UNIVERSE_ID }}/places/${{ secrets.ROBLOX_PLACE_ID }}/versions" \
-            -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary @planet-miner-build.rbxl
+          echo "File size: $(wc -c < planet-miner-build.rbxl) bytes"
+          for i in 1 2 3 4 5; do
+            echo "Upload attempt $i..."
+            RESPONSE=$(curl -s -X POST \
+              "https://apis.roblox.com/universes/v1/${{ secrets.ROBLOX_UNIVERSE_ID }}/places/${{ secrets.ROBLOX_PLACE_ID }}/versions?versionType=Published" \
+              -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @planet-miner-build.rbxl)
+            echo "Response: $RESPONSE"
+            echo "$RESPONSE" | grep -q '"versionNumber"' && echo "Upload succeeded!" && exit 0
+            echo "Not ready, waiting 30s..."
+            sleep 30
+          done
+          echo "Upload failed after 5 attempts"
+          exit 1

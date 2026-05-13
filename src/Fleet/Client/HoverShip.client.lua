@@ -67,6 +67,7 @@ local moveConn
 local scrollConn
 local rmDownConn, rmUpConn
 local rightMouseHeld   = false
+local lockedAimPos     = nil   -- world-space beam anchor when RMB is held
 local shipVel          = Vector3.new(0, 0, 0)
 local cameraYaw        = 0
 local orbitYaw         = 0
@@ -296,21 +297,15 @@ local function update(dt)
             local inner2 = PLANET_RADIUS * PLANET_RADIUS - dx2 * dx2 - dz2 * dz2
             aimPos = Vector3.new(tgtX,
                 PLANET_CENTER.Y + (inner2 > 0 and math.sqrt(inner2) or 0), tgtZ)
+        elseif rightMouseHeld then
+            -- RMB held = beam stays fixed at the world position it was at when RMB was pressed
+            aimPos = lockedAimPos or (newPos - forward * 15)
         else
+            -- Free aim: follow mouse cursor
             local mouse  = Players.LocalPlayer:GetMouse()
             local camRay = workspace.CurrentCamera:ScreenPointToRay(mouse.X, mouse.Y)
             local aimResult = workspace:Raycast(camRay.Origin, camRay.Direction * 2000, rayParams)
-            if aimResult then
-                aimPos = aimResult.Position
-            else
-                local tgtX   = newPos.X + forward.X * BEAM_RANGE
-                local tgtZ   = newPos.Z + forward.Z * BEAM_RANGE
-                local dx2    = tgtX - PLANET_CENTER.X
-                local dz2    = tgtZ - PLANET_CENTER.Z
-                local inner2 = PLANET_RADIUS * PLANET_RADIUS - dx2 * dx2 - dz2 * dz2
-                aimPos = Vector3.new(tgtX,
-                    PLANET_CENTER.Y + (inner2 > 0 and math.sqrt(inner2) or 0), tgtZ)
-            end
+            aimPos = aimResult and aimResult.Position or (newPos + forward * 15)
         end
 
         beamEndAnchor.Position = aimPos
@@ -322,17 +317,32 @@ local function update(dt)
         end
 
         if beamTimer <= 0 and hitDebrisRemote then
-            local camRay = useTwinStick
-                and { Origin = newPos, Direction = (aimPos - newPos).Unit * BEAM_RANGE * 4 }
-                or  (function()
-                        local m = Players.LocalPlayer:GetMouse()
-                        return workspace.CurrentCamera:ScreenPointToRay(m.X, m.Y)
-                    end)()
-            local debrisHit = workspace:Raycast(camRay.Origin, camRay.Direction * BEAM_RANGE * 4, debrisRayParams)
-            if debrisHit then
-                hitDebrisRemote:FireServer(debrisHit.Instance)
-                beamTimer = BEAM_COOLDOWN
+            local beamDir
+            if rightMouseHeld then
+                beamDir = (PLANET_CENTER - newPos).Unit
+            else
+                beamDir = (aimPos - newPos).Unit
             end
+            -- Blockcast along full beam length so anything the beam passes through gets hit
+            local beamLength = (aimPos - newPos).Magnitude
+            local beamCF     = CFrame.lookAt(newPos, newPos + beamDir) * CFrame.new(0, 0, -beamLength / 2)
+            local beamSize   = Vector3.new(0.5, 0.5, beamLength)
+            local overlapParams = OverlapParams.new()
+            overlapParams.FilterType = Enum.RaycastFilterType.Include
+            overlapParams.FilterDescendantsInstances = {workspace:FindFirstChild("Debris")}
+            local hits = workspace:GetPartBoundsInBox(beamCF, beamSize, overlapParams)
+            local fired      = false
+            for _, part in ipairs(hits) do
+                local inst = part
+                while inst and not inst:GetAttribute("IsDebris") do
+                    inst = inst.Parent
+                end
+                if inst and inst:GetAttribute("IsDebris") then
+                    hitDebrisRemote:FireServer(inst)
+                    fired = true
+                end
+            end
+            if fired then beamTimer = BEAM_COOLDOWN end
         end
     elseif beamObj then
         beamObj.Enabled = false
@@ -397,11 +407,16 @@ tool.Equipped:Connect(function()
             if input.UserInputType == Enum.UserInputType.MouseButton2 then
                 rightMouseHeld = true
                 UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+                -- Snap beam anchor to current aim position
+                if beamActive and beamEndAnchor then
+                    lockedAimPos = beamEndAnchor.Position
+                end
             end
         end)
         rmUpConn = UserInputService.InputEnded:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton2 then
                 rightMouseHeld = false
+                lockedAimPos   = nil
                 UserInputService.MouseBehavior = Enum.MouseBehavior.Default
             end
         end)

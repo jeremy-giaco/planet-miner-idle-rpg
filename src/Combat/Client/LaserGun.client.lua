@@ -183,27 +183,28 @@ local function fire()
     local mouse  = player:GetMouse()
     local camRay = camera:ScreenPointToRay(mouse.X, mouse.Y)
 
-    -- Find world aim point via camera ray
-    local aimParams = RaycastParams.new()
-    aimParams.FilterType = Enum.RaycastFilterType.Exclude
-    aimParams.FilterDescendantsInstances = {character}
-    local aimResult = workspace:Raycast(camRay.Origin, camRay.Direction * Config.LASER_RANGE, aimParams)
-    local aimPos    = aimResult and aimResult.Position
-                      or (camRay.Origin + camRay.Direction * 600)
+    -- Aim ray from camera: shoot far in cursor direction for visual endpoint
+    local aimPos = camRay.Origin + camRay.Direction * Config.LASER_RANGE
 
-    -- Damage ray: full laser range in the aim direction, only sees Debris folder.
-    -- Using full range (not just to aimPos) so the planet surface can't short-stop the ray.
-    local aimDir   = (aimPos - handle.Position).Unit
-    local params   = RaycastParams.new()
+    -- Damage ray from handle toward cursor direction, only sees Debris folder
+    local aimDir = camRay.Direction  -- use camera direction directly, avoids offset issues
+    local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Include
     params.FilterDescendantsInstances = {debrisFolder}
-    local result = workspace:Raycast(handle.Position, aimDir * Config.LASER_RANGE, params)
+    local result = workspace:Raycast(camRay.Origin, aimDir * Config.LASER_RANGE, params)
 
     local hitPos = result and result.Position or aimPos
     flashBeam(handle.Position, hitPos)
 
-    if result and result.Instance:GetAttribute("IsDebris") then
-        hitDebrisEvent:FireServer(result.Instance)
+    if result and result.Instance then
+        local inst = result.Instance
+        -- Walk up to the debris chunk root if we hit a child
+        while inst and not inst:GetAttribute("IsDebris") do
+            inst = inst.Parent
+        end
+        if inst and inst:GetAttribute("IsDebris") then
+            hitDebrisEvent:FireServer(inst)
+        end
     end
 
     task.delay(Config.LASER_COOLDOWN, function() canFire = true end)
