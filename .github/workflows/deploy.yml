@@ -17,10 +17,13 @@ jobs:
 
       - name: Install Rojo
         run: |
-          curl -L https://github.com/rojo-rbx/rojo/releases/latest/download/rojo-linux-x86_64.zip -o rojo.zip
+          ROJO_VERSION=$(curl -s https://api.github.com/repos/rojo-rbx/rojo/releases/latest | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')
+          echo "Installing Rojo $ROJO_VERSION"
+          curl -L "https://github.com/rojo-rbx/rojo/releases/download/v${ROJO_VERSION}/rojo-${ROJO_VERSION}-linux-x86_64.zip" -o rojo.zip
           unzip rojo.zip
           chmod +x rojo
           sudo mv rojo /usr/local/bin/rojo
+          rojo --version
 
       - name: Build place file
         run: rojo build default.project.json -o planet-miner-build.rbxl
