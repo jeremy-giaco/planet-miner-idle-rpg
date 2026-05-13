@@ -56,8 +56,15 @@ function WorldGen.buildPlanet(cfg)
     sphere.CanCollide = true
     sphere.CastShadow = false
     sphere.Color     = pc.color
-    sphere.Material  = pc.material or Enum.Material.SmoothPlastic
+    sphere.Material  = pc.material or Enum.Material.Rock
     sphere.CustomPhysicalProperties = PhysicalProperties.new(0.9, 0.6, 0.05, 0.5, 0.5)
+    if pc.textureId then
+        local sa = Instance.new("SurfaceAppearance")
+        sa.ColorMap   = pc.textureId
+        sa.RoughnessMap = pc.roughnessMap or ""
+        sa.NormalMap    = pc.normalMap    or ""
+        sa.Parent = sphere
+    end
     sphere.Parent    = workspace
     return sphere
 end
@@ -79,8 +86,9 @@ function WorldGen.buildBase(cfg)
     local seg = (W - DW) / 2         -- wall segment either side of door
 
     -- ── Foundation pad ───────────────────────────────────────────────────────
-    -- Raised platform that hides sphere-curvature intersection at edges.
-    part(Vector3.new(W + 20, 4, D + 20), Vector3.new(BX, BY - 2, BZ),
+    -- Buried deep enough that its bottom clears the sphere surface at the
+    -- furthest corner of the base+hangar footprint (worst gap ~12 st at R=1024).
+    part(Vector3.new(W + 20, 18, D + 20), Vector3.new(BX, BY - 9, BZ),
         col.foundation or col.panel, Enum.Material.SmoothPlastic)
 
     -- ── Floor ─────────────────────────────────────────────────────────────────
@@ -197,21 +205,25 @@ function WorldGen.buildBase(cfg)
         end
     end
 
-    -- South ramp: high end at z=BZ+D/2 (floor), low end at z=BZ+D/2+rampRun (surface)
-    local sFarZ  = BZ + D/2 + rampRun
-    local sSurfY = surfYAtZ(sFarZ)
-    local sRise  = BY - sSurfY
-    local sLen   = math.sqrt(rampRun*rampRun + sRise*sRise)
-    local sAng   = math.atan2(sRise, rampRun)
-    buildRamp(BX, (BY + sSurfY)/2, BZ + D/2 + rampRun/2, sLen, -sAng)
+    local foundation = 10   -- foundation slab extends 10 studs past each wall
 
-    -- North ramp: high end at z=BZ-D/2 (floor), low end at z=BZ-D/2-rampRun (surface)
-    local nFarZ  = BZ - D/2 - rampRun
-    local nSurfY = surfYAtZ(nFarZ)
-    local nRise  = BY - nSurfY
-    local nLen   = math.sqrt(rampRun*rampRun + nRise*nRise)
-    local nAng   = math.atan2(nRise, rampRun)
-    buildRamp(BX, (BY + nSurfY)/2, BZ - D/2 - rampRun/2, nLen, nAng)
+    -- South ramp: high end at foundation edge (z=BZ+D/2+foundation), low end beyond
+    local sStartZ = BZ + D/2 + foundation
+    local sFarZ   = sStartZ + rampRun
+    local sSurfY  = surfYAtZ(sFarZ)
+    local sRise   = BY - sSurfY
+    local sLen    = math.sqrt(rampRun*rampRun + sRise*sRise)
+    local sAng    = math.atan2(sRise, rampRun)
+    buildRamp(BX, (BY + sSurfY)/2, sStartZ + rampRun/2, sLen, sAng)
+
+    -- North ramp: high end at foundation edge (z=BZ-D/2-foundation), low end beyond
+    local nStartZ = BZ - D/2 - foundation
+    local nFarZ   = nStartZ - rampRun
+    local nSurfY  = surfYAtZ(nFarZ)
+    local nRise   = BY - nSurfY
+    local nLen    = math.sqrt(rampRun*rampRun + nRise*nRise)
+    local nAng    = math.atan2(nRise, rampRun)
+    buildRamp(BX, (BY + nSurfY)/2, nStartZ - rampRun/2, nLen, -nAng)
 
 end
 
@@ -261,6 +273,8 @@ function WorldGen.buildHangar(cfg)
         return p
     end
 
+    -- Foundation fill — buries hangar into sphere so no gap at edges
+    hp(Vector3.new(HW + 4, 18, HD + 4), cx, fy - 9, cz, col.foundation or col.hull)
     -- Visible floor
     hp(Vector3.new(HW, 3, HD), cx, fy+1.5, cz, col.panel)
     -- Ceiling

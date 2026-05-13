@@ -19,7 +19,7 @@ local shipsFolder = workspace:WaitForChild("PlayerShips")
 -- ── Constants ─────────────────────────────────────────────────────────────────
 
 local SPEED         = 280
-local HOVER_HEIGHT  = 22   -- sphere curves ~18 st below flat floor at the bay doors (z=-155); need >20.5 to clear
+local HOVER_HEIGHT  = 14   -- R=1024: sphere curves ~12 st below flat floor at bay doors; 14 gives safe margin
 local HOVER_BOOST   = 120
 local ACCEL         = 8
 local ROLL_MAX      = math.rad(48)

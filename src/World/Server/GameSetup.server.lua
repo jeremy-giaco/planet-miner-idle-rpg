@@ -23,7 +23,7 @@ local MOON_CONFIG = {
         radius   = Config.PLANET_RADIUS,
         center   = Config.PLANET_CENTER,
         color    = Color3.fromRGB(192, 189, 202),   -- pale grey moon rock
-        material = Enum.Material.SmoothPlastic,
+        material = Enum.Material.Rock,
     },
     base = {
         position  = Vector3.new(0, Config.PLANET_RADIUS, 0),  -- north pole
