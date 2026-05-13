@@ -43,14 +43,18 @@ jobs:
 
       - name: Upload to Roblox
         run: |
-          echo "Universe ID set: ${{ secrets.ROBLOX_UNIVERSE_ID != '' }}"
-          echo "Place ID set: ${{ secrets.ROBLOX_PLACE_ID != '' }}"
-          echo "API Key set: ${{ secrets.ROBLOX_API_KEY != '' }}"
           echo "File size: $(wc -c < planet-miner-build.rbxl) bytes"
-          RESPONSE=$(curl -s -X POST \
-            "https://apis.roblox.com/universes/v1/${{ secrets.ROBLOX_UNIVERSE_ID }}/places/${{ secrets.ROBLOX_PLACE_ID }}/versions?versionType=Published" \
-            -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary @planet-miner-build.rbxl)
-          echo "Roblox API response: $RESPONSE"
-          echo "$RESPONSE" | grep -q '"versionNumber"' || (echo "Upload failed" && exit 1)
+          for i in 1 2 3 4 5; do
+            echo "Upload attempt $i..."
+            RESPONSE=$(curl -s -X POST \
+              "https://apis.roblox.com/universes/v1/${{ secrets.ROBLOX_UNIVERSE_ID }}/places/${{ secrets.ROBLOX_PLACE_ID }}/versions?versionType=Published" \
+              -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @planet-miner-build.rbxl)
+            echo "Response: $RESPONSE"
+            echo "$RESPONSE" | grep -q '"versionNumber"' && echo "Upload succeeded!" && exit 0
+            echo "Not ready, waiting 30s..."
+            sleep 30
+          done
+          echo "Upload failed after 5 attempts"
+          exit 1
