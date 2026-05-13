@@ -1,0 +1,106 @@
+{
+    "name": "planet-miner",
+    "tree": {
+        "$className": "DataModel",
+
+        "ReplicatedStorage": {
+            "Config": {
+                "$path": "src/ReplicatedStorage/Config.lua"
+            }
+        },
+
+        "ServerScriptService": {
+            "WorldGen": {
+                "$path": "src/ServerScriptService/WorldGen.lua"
+            },
+            "GameSetup": {
+                "$path": "src/ServerScriptService/GameSetup.server.lua"
+            },
+            "DebrisSystem": {
+                "$path": "src/ServerScriptService/DebrisSystem.server.lua"
+            },
+            "RoverSystem": {
+                "$path": "src/ServerScriptService/RoverSystem.server.lua"
+            },
+            "CoinSystem": {
+                "$path": "src/ServerScriptService/CoinSystem.server.lua"
+            }
+        },
+
+        "StarterPlayer": {
+            "$className": "StarterPlayer",
+            "StarterPlayerScripts": {
+                "$className": "StarterPlayerScripts",
+                "TurretClient": {
+                    "$path": "src/StarterPlayerScripts/TurretClient.client.lua"
+                },
+                "ZoneDetector": {
+                    "$path": "src/StarterPlayerScripts/ZoneDetector.client.lua"
+                }
+            },
+            "StarterCharacterScripts": {
+                "$className": "StarterCharacterScripts",
+                "AutoEquip": {
+                    "$path": "src/StarterCharacterScripts/AutoEquip.client.lua"
+                },
+                "Jetpack": {
+                    "$path": "src/StarterCharacterScripts/Jetpack.client.lua"
+                },
+                "MoonGravity": {
+                    "$path": "src/StarterCharacterScripts/MoonGravity.client.lua"
+                }
+            }
+        },
+
+        "StarterPack": {
+            "Ship": {
+                "$className": "Tool",
+                "$properties": {
+                    "ToolTip": "Ship",
+                    "RequiresHandle": false
+                },
+                "HoverShip": {
+                    "$path": "src/StarterPack/HoverShip/HoverShip.client.lua"
+                }
+            },
+            "Shield": {
+                "$className": "Tool",
+                "$properties": {
+                    "ToolTip": "Shield",
+                    "RequiresHandle": false
+                },
+                "EnergyShield": {
+                    "$path": "src/StarterPack/EnergyShield/EnergyShield.client.lua"
+                }
+            },
+            "Laser": {
+                "$className": "Tool",
+                "$properties": {
+                    "ToolTip": "Laser",
+                    "RequiresHandle": true
+                },
+                "Handle": {
+                    "$className": "Part",
+                    "$properties": {
+                        "Size": [1, 0.5, 3],
+                        "Color": [0.0, 0.9, 0.4],
+                        "Material": "Neon",
+                        "CanCollide": false
+                    }
+                },
+                "LaserGun": {
+                    "$path": "src/StarterPack/LaserGun/LaserGun.client.lua"
+                }
+            }
+        },
+
+        "StarterGui": {
+            "InventoryUI": {
+                "$path": "src/StarterGui/InventoryUI.client.lua"
+            },
+            "DroneUI": {
+                "$path": "src/StarterGui/DroneUI.client.lua"
+            }
+        }
+    }
+}
