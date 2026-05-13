@@ -122,7 +122,7 @@ RunService.Heartbeat:Connect(function(dt)
     local xzDist  = Vector2.new(p.X, p.Z).Magnitude
     local newZone = getZoneName(xzDist)
 
-    zoneLabel.Text       = newZone
+    zoneLabel.Text       = (Config.PLANET_NAME or "Moon") .. ": " .. newZone
     zoneLabel.TextColor3 = ZONE_LABEL_COLOR[newZone] or Color3.new(1, 1, 1)
 
     if newZone ~= currentZone then

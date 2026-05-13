@@ -17,10 +17,10 @@ local MOON_CONFIG = {
     },
     base = {
         position  = Vector3.new(0, Config.PLANET_RADIUS, 0),  -- north pole
-        width     = 60,
-        depth     = 80,
-        height    = 20,
-        doorWidth = 10,
+        width     = 140,
+        depth     = 200,
+        height    = 28,
+        doorWidth = 16,
         colors = {
             hull       = Color3.fromRGB(36, 42, 62),
             panel      = Color3.fromRGB(50, 58, 85),

@@ -6,10 +6,28 @@
         "ReplicatedStorage": {
             "Config": {
                 "$path": "src/Core/Config.lua"
+            },
+            "DataSchema": {
+                "$path": "src/Data/Shared/DataSchema.lua"
+            },
+            "VirtualJoystick": {
+                "$path": "src/UI/Shared/VirtualJoystick.lua"
+            },
+            "ClientSettings": {
+                "$path": "src/Core/ClientSettings.lua"
             }
         },
 
         "ServerScriptService": {
+            "Remotes": {
+                "$path": "src/Core/Remotes.server.lua"
+            },
+            "DataStore": {
+                "$path": "src/Data/Server/DataStore.server.lua"
+            },
+            "StatManager": {
+                "$path": "src/Data/Server/StatManager.server.lua"
+            },
             "GameSetup": {
                 "$path": "src/World/Server/GameSetup.server.lua"
             },
@@ -27,6 +45,9 @@
             },
             "CoinSystem": {
                 "$path": "src/Economics/Server/CoinSystem.server.lua"
+            },
+            "SettingsHandler": {
+                "$path": "src/Data/Server/SettingsHandler.server.lua"
             }
         },
 
@@ -103,6 +124,9 @@
             },
             "InventoryUI": {
                 "$path": "src/UI/HUD/InventoryUI.client.lua"
+            },
+            "SettingsMenu": {
+                "$path": "src/UI/Menus/SettingsMenu.client.lua"
             }
         }
     }

@@ -8,9 +8,9 @@ local RunService        = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 
-local registerCollectible = ReplicatedStorage:WaitForChild("RegisterCollectible", 10)
-local serverMetalEarned   = ReplicatedStorage:WaitForChild("ServerMetalEarned")
 local remotes             = ReplicatedStorage:WaitForChild("Remotes")
+local registerCollectible = remotes:WaitForChild("RegisterCollectible")
+local serverMetalEarned   = remotes:WaitForChild("ServerMetalEarned")
 local collectMetalEvent   = remotes:WaitForChild("CollectMetal")
 
 local oreFolder = Instance.new("Folder")
@@ -97,6 +97,10 @@ local function spawnOre()
         if not player then return end
         conn:Disconnect()
         ore:Destroy()
+        if _G.PlayerData then
+            _G.PlayerData.addMetal(player, metal.name)
+            _G.PlayerData.addXP(player, 15)
+        end
         collectMetalEvent:FireClient(player, metal.name)
         serverMetalEarned:Fire(player, metal.name)
     end)
