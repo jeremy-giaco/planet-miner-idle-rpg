@@ -227,13 +227,13 @@ task.spawn(function()
 
         recallPrompt.Enabled = false
 
-        -- Animate button press: push in then spring back
-        local btnPart   = recallBtn
-        local pressedCF = btnPart.CFrame * CFrame.new(0, 0, 0.35)   -- push INTO wall (local Z)
-        local restCF    = btnPart.CFrame
-        TweenService:Create(btnPart, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.In),  { CFrame = pressedCF }):Play()
+        -- Animate button press: push dome into wall then spring back
+        local btnPart    = recallBtn
+        local restPos    = btnPart.Position
+        local pressedPos = restPos + Vector3.new(0, 0, -0.5)   -- push toward wall (-Z)
+        TweenService:Create(btnPart, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.In),    { Position = pressedPos }):Play()
         task.wait(0.12)
-        TweenService:Create(btnPart, TweenInfo.new(0.18, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), { CFrame = restCF }):Play()
+        TweenService:Create(btnPart, TweenInfo.new(0.22, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), { Position = restPos    }):Play()
         task.wait(0.3)
 
         setDoor(true)

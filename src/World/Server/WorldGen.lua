@@ -284,75 +284,67 @@ function WorldGen.buildHangar(cfg)
     door:SetAttribute("ClosedY", doorY_closed)
     door:SetAttribute("OpenY",   doorY_open)
 
-    -- ── Recall button — mounted flush on inside of south wall ─────────────────
+    -- ── Recall button — mounted on inside of south wall ──────────────────────
     local RED      = Color3.fromRGB(220, 30,  30)
     local HOUSING  = Color3.fromRGB(28,  28,  34)
-    local RING_COL = Color3.fromRGB(50,  50,  60)
+    local RING_COL = Color3.fromRGB(60,  62,  72)
     local btnX     = cx + conW/2 + 6
     local wallZ    = northZ + WT          -- inner face of south wall
     local btnY     = fy + 9
 
-    -- ── Button assembly: round cylinder parts rotated to face into hangar ──────
-    -- Roblox Cylinder default axis = X. Rotating 90° around Y makes the axis
-    -- point along Z, so the circular face looks toward the player (into hangar).
-    local function cyl(sz, px, py, pz, color, mat, trans)
-        local p = Instance.new("Part")
-        p.Shape        = Enum.PartType.Cylinder
-        p.Size         = sz
-        p.CFrame       = CFrame.new(px, py, pz) * CFrame.Angles(0, math.rad(90), 0)
-        p.Anchored     = true
-        p.CanCollide   = false
-        p.CastShadow   = false
-        p.Color        = color
-        p.Material     = mat or Enum.Material.Metal
-        p.Transparency = trans or 0
-        p.Parent       = folder
-        return p
-    end
+    -- Backing plate (rectangular, dark, flush with wall)
+    hp(Vector3.new(7, 9, 0.3), btnX, btnY, wallZ + 0.15, HOUSING, Enum.Material.Metal)
+    -- Collar ring: cylinder whose circular face points into the hangar (+Z)
+    -- Roblox cylinder axis = X by default; rotate 90° around Y to point along Z.
+    local collar = Instance.new("Part")
+    collar.Shape     = Enum.PartType.Cylinder
+    collar.Size      = Vector3.new(0.6, 4.2, 4.2)   -- depth, diameter, diameter — truly circular
+    collar.CFrame    = CFrame.new(btnX, btnY, wallZ + 0.6) * CFrame.Angles(0, math.rad(90), 0)
+    collar.Anchored  = true; collar.CanCollide = false; collar.CastShadow = false
+    collar.Color     = RING_COL; collar.Material = Enum.Material.Metal
+    collar.Parent    = folder
 
-    -- Outer housing ring (dark, flush with wall)
-    cyl(Vector3.new(3.6, 0.5, 3.6), btnX, btnY, wallZ + 0.25, HOUSING)
-    -- Inner surround ring (slightly lighter, proud of housing)
-    cyl(Vector3.new(3.0, 0.6, 3.0), btnX, btnY, wallZ + 0.55, RING_COL)
-    -- The red button face (round, proud of surround — this is the clickable part)
-    local btn = cyl(Vector3.new(2.2, 0.55, 2.2), btnX, btnY, wallZ + 0.85, RED, Enum.Material.Neon)
-    btn.Name = "RecallButton"
-    addLight(btn, RED, 3, 12)
+    -- Dome: sphere so it looks perfectly circular from all angles (fire-alarm style)
+    local btn = Instance.new("Part")
+    btn.Name     = "RecallButton"
+    btn.Shape    = Enum.PartType.Ball
+    btn.Size     = Vector3.new(3.2, 3.2, 3.2)
+    btn.Position = Vector3.new(btnX, btnY, wallZ + 1.1)   -- protrudes from collar
+    btn.Anchored = true; btn.CanCollide = false; btn.CastShadow = false
+    btn.Color    = RED; btn.Material = Enum.Material.Neon
+    btn.Parent   = folder
+    addLight(btn, RED, 4, 18)
 
-    -- ── Sign: BillboardGui above the button so it always faces the player ───────
-    local signY = btnY + 3.0
-    local signAnchor = hp(Vector3.new(0.1, 0.1, 0.1), btnX, signY, wallZ + 0.5,
-        Color3.fromRGB(0, 0, 0), Enum.Material.SmoothPlastic, 1, false)
+    -- ── Sign above the button ─────────────────────────────────────────────────
+    -- Physical sign plate so it's visible even without BillboardGui
+    local signPlate = hp(Vector3.new(7, 2.2, 0.25), btnX, btnY + 5.8, wallZ + 0.15,
+        Color3.fromRGB(10, 10, 14), Enum.Material.SmoothPlastic)
     local bb = Instance.new("BillboardGui")
-    bb.Size           = UDim2.new(0, 200, 0, 50)
-    bb.StudsOffset    = Vector3.new(0, 0, 0)
-    bb.AlwaysOnTop    = false
-    bb.MaxDistance    = 30
-    bb.Parent         = signAnchor
+    bb.Size        = UDim2.new(0, 220, 0, 52)
+    bb.StudsOffset = Vector3.new(0, 0, 0.5)   -- float 0.5 studs in front of plate
+    bb.AlwaysOnTop = false
+    bb.MaxDistance = 40
+    bb.Parent      = signPlate
     local lbl = Instance.new("TextLabel")
     lbl.Size                   = UDim2.new(1, 0, 1, 0)
-    lbl.BackgroundColor3       = Color3.fromRGB(12, 12, 16)
-    lbl.BackgroundTransparency = 0
+    lbl.BackgroundTransparency = 1
     lbl.Text                   = "RECALL SHIP"
     lbl.Font                   = Enum.Font.GothamBold
-    lbl.TextScaled             = true
+    lbl.TextSize               = 20
     lbl.TextColor3             = Color3.fromRGB(255, 255, 255)
     lbl.TextStrokeColor3       = Color3.fromRGB(0, 0, 0)
-    lbl.TextStrokeTransparency = 0.5
-    lbl.Parent = bb
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = lbl
+    lbl.TextStrokeTransparency = 0.3
+    lbl.Parent                 = bb
 
-    -- ProximityPrompt on the button face
+    -- ProximityPrompt on the button dome
     local prompt = Instance.new("ProximityPrompt")
     prompt.ActionText            = "Recall Ship"
     prompt.ObjectText            = "RECALL SHIP"
     prompt.KeyboardKeyCode       = Enum.KeyCode.F
-    prompt.HoldDuration          = 0.5
+    prompt.HoldDuration          = 0.4
     prompt.RequiresLineOfSight   = false
     prompt.MaxActivationDistance = 16
-    prompt.Parent = btn
+    prompt.Parent                = btn
 
     print("[WorldGen] Hangar built. Door closed Y=" .. doorY_closed .. " open Y=" .. doorY_open)
     return folder

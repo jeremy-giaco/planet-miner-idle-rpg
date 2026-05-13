@@ -19,7 +19,7 @@ local shipsFolder = workspace:WaitForChild("PlayerShips")
 -- ── Constants ─────────────────────────────────────────────────────────────────
 
 local SPEED         = 280
-local HOVER_HEIGHT  = 12
+local HOVER_HEIGHT  = 16   -- 16 keeps ship above hangar floor (sphere curves ~11 st below flat floor at z=-127)
 local HOVER_BOOST   = 120
 local ACCEL         = 8
 local ROLL_MAX      = math.rad(48)

@@ -224,7 +224,7 @@ local NB_COLOR = Color3.fromRGB(60, 150, 255)
 WorldGen.buildBeacon(MOON_CONFIG,  160, 0,    NB_COLOR)
 WorldGen.buildBeacon(MOON_CONFIG, -160, 0,    NB_COLOR)
 WorldGen.buildBeacon(MOON_CONFIG,  0,   160,  NB_COLOR)
-WorldGen.buildBeacon(MOON_CONFIG,  0,  -160,  NB_COLOR)
+-- beacon at (0,-160) removed — it was directly in front of the hangar bay door
 print("[SkyBase] Beacons built")
 
 setupSpawn()
