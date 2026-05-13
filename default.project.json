@@ -6,12 +6,18 @@
         "ReplicatedStorage": {
             "Config": {
                 "$path": "src/Core/Config.lua"
+            },
+            "DataSchema": {
+                "$path": "src/Data/Shared/DataSchema.lua"
             }
         },
 
         "ServerScriptService": {
             "Remotes": {
                 "$path": "src/Core/Remotes.server.lua"
+            },
+            "DataStore": {
+                "$path": "src/Data/Server/DataStore.server.lua"
             },
             "GameSetup": {
                 "$path": "src/World/Server/GameSetup.server.lua"

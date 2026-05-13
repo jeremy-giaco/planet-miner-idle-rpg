@@ -347,6 +347,11 @@ task.spawn(function()
                     local worldPos = part.Position
                     table.remove(activeCollectibles, i)
                     part:Destroy()
+                    -- Persist to DataStore
+                    if _G.PlayerData then
+                        _G.PlayerData.addFragment(plr, entry.fragType, entry.qty)
+                        _G.PlayerData.addXP(plr, entry.qty * 5)
+                    end
                     collectFragmentEvent:FireClient(plr, entry.fragType, entry.qty, worldPos)
                     break
                 end

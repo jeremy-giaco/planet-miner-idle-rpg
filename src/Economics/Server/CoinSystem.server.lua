@@ -97,6 +97,10 @@ local function spawnOre()
         if not player then return end
         conn:Disconnect()
         ore:Destroy()
+        if _G.PlayerData then
+            _G.PlayerData.addMetal(player, metal.name)
+            _G.PlayerData.addXP(player, 15)
+        end
         collectMetalEvent:FireClient(player, metal.name)
         serverMetalEarned:Fire(player, metal.name)
     end)
