@@ -56,8 +56,8 @@ local function setupLighting()
     Lighting.EnvironmentSpecularScale = 0.8
     Lighting.ClockTime                = 12
     Lighting.GeographicLatitude       = 90
-    Lighting.FogStart = 8000
-    Lighting.FogEnd   = 12000
+    Lighting.FogStart = 4000
+    Lighting.FogEnd   = 7000
     Lighting.FogColor = Color3.fromRGB(2, 2, 8)     -- deep black space
 
     -- No Sky object → Roblox renders a pure black void, letting FogColor/Ambient give the space feel
