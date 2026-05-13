@@ -43,8 +43,10 @@ jobs:
 
       - name: Upload to Roblox
         run: |
-          curl -X POST \
-            "https://apis.roblox.com/universes/v1/${{ secrets.ROBLOX_UNIVERSE_ID }}/places/${{ secrets.ROBLOX_PLACE_ID }}/versions" \
+          RESPONSE=$(curl -s -X POST \
+            "https://apis.roblox.com/universes/v1/${{ secrets.ROBLOX_UNIVERSE_ID }}/places/${{ secrets.ROBLOX_PLACE_ID }}/versions?versionType=Published" \
             -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
             -H "Content-Type: application/octet-stream" \
-            --data-binary @planet-miner-build.rbxl
+            --data-binary @planet-miner-build.rbxl)
+          echo "Roblox API response: $RESPONSE"
+          echo "$RESPONSE" | grep -q '"versionNumber"' || (echo "Upload failed" && exit 1)
