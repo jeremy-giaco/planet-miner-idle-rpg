@@ -32,7 +32,7 @@ jobs:
 
       - name: Create GitHub Release
         run: |
-          TAG="release-${{ github.sha }}"
+          TAG="release-${{ github.run_number }}-${{ github.run_attempt }}"
           curl -s -X POST \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
