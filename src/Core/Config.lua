@@ -5,8 +5,10 @@ return {
     PLANET_RADIUS = 700,
     PLANET_CENTER = Vector3.new(0, 0, 0),
 
-    -- Drone repair station — sits on sphere surface north of the base
-    STATION_POS = Vector3.new(0, 721.5, 0),
+    -- Drone repair station — south of the base, on sphere surface.
+    -- surfaceY at z=180: sqrt(700²-180²) ≈ 676.6  (18.5 studs below pole level, barely noticeable)
+    -- South base wall is at z=+100; station sits ~80 studs beyond it.
+    STATION_POS = Vector3.new(0, 676.6, 180),
 
     -- Debris spawning
     DEBRIS_SPAWN_INTERVAL = 4,
@@ -41,5 +43,5 @@ return {
     LASER_DAMAGE   = 100,
     LASER_RANGE    = 8000,
     LASER_COOLDOWN = 0.25,
-    LASER_COLOR    = Color3.fromRGB(0, 230, 120),
+    LASER_COLOR    = Color3.fromRGB(255, 30, 30),
 }

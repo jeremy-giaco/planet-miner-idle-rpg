@@ -13,7 +13,7 @@ local character = script.Parent
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 
-humanoid.WalkSpeed = 32
+humanoid.WalkSpeed = 56
 
 -- BodyGyro keeps HRP upright relative to sphere surface (up = away from center)
 local bodyGyro         = Instance.new("BodyGyro")
