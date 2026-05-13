@@ -25,6 +25,8 @@ end
 
 -- ── Client ↔ Server ───────────────────────────────────────────────────────────
 remote("StatsUpdated")        -- server → client: push updated stats to HUD
+remote("LoadSettings")        -- server → client: push saved settings on join
+remote("SaveSettings")        -- client → server: persist a settings change
 remote("HitDebris")           -- client → server: laser hit a debris chunk
 remote("CollectFragment")     -- server → client: fragment added to inventory
 remote("CollectMetal")        -- server → client: metal added to inventory

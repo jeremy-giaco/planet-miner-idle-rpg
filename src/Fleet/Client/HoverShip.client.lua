@@ -9,6 +9,7 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
 local Config            = require(ReplicatedStorage:WaitForChild("Config"))
+local ClientSettings    = require(ReplicatedStorage:WaitForChild("ClientSettings"))
 
 local PLANET_RADIUS = Config.PLANET_RADIUS
 local PLANET_CENTER = Config.PLANET_CENTER
@@ -52,6 +53,10 @@ local HOVER_COL = Color3.fromRGB(50, 110, 255)
 -- ── Platform detection ────────────────────────────────────────────────────────
 
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
+-- Resolved at equip time from ClientSettings.controlMode
+-- "twin-stick" | "tap-to-fly" | "gyro" → use joystick; "classic" → mouse+keyboard
+local useTwinStick = false
 
 -- ── State ─────────────────────────────────────────────────────────────────────
 
@@ -205,7 +210,7 @@ local function update(dt)
 
     local fwd, str, up = 0, 0, 0
 
-    if isMobile and sticks then
+    if useTwinStick and sticks then
         -- ── Twin-stick input ──────────────────────────────────────────────────
         local lx, ly = sticks.left()
         local rx, ry = sticks.right()
@@ -282,7 +287,7 @@ local function update(dt)
     fireTimer = fireTimer - dt
     if beamActive and beamObj and beamEndAnchor then
         local aimPos
-        if isMobile then
+        if useTwinStick then
             -- On mobile aim beam directly ahead of ship
             local tgtX   = newPos.X + forward.X * BEAM_RANGE
             local tgtZ   = newPos.Z + forward.Z * BEAM_RANGE
@@ -317,7 +322,7 @@ local function update(dt)
         end
 
         if beamTimer <= 0 and hitDebrisRemote then
-            local camRay = isMobile
+            local camRay = useTwinStick
                 and { Origin = newPos, Direction = (aimPos - newPos).Unit * BEAM_RANGE * 4 }
                 or  (function()
                         local m = Players.LocalPlayer:GetMouse()
@@ -372,7 +377,12 @@ tool.Equipped:Connect(function()
     workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
     UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 
-    if isMobile then
+    -- Resolve control mode: respect user setting, fall back to hardware detection
+    local mode = ClientSettings.controlMode or "classic"
+    useTwinStick = (mode == "twin-stick" or mode == "tap-to-fly" or mode == "gyro")
+        or (isMobile and mode == "classic")  -- auto-upgrade mobile if not explicitly set
+
+    if useTwinStick then
         -- Spawn virtual joystick over the game UI
         local VirtualJoystick = require(ReplicatedStorage:WaitForChild("VirtualJoystick"))
         local gui = player:WaitForChild("PlayerGui")

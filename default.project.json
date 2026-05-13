@@ -12,6 +12,9 @@
             },
             "VirtualJoystick": {
                 "$path": "src/UI/Shared/VirtualJoystick.lua"
+            },
+            "ClientSettings": {
+                "$path": "src/Core/ClientSettings.lua"
             }
         },
 
@@ -42,6 +45,9 @@
             },
             "CoinSystem": {
                 "$path": "src/Economics/Server/CoinSystem.server.lua"
+            },
+            "SettingsHandler": {
+                "$path": "src/Data/Server/SettingsHandler.server.lua"
             }
         },
 
@@ -118,6 +124,9 @@
             },
             "InventoryUI": {
                 "$path": "src/UI/HUD/InventoryUI.client.lua"
+            },
+            "SettingsMenu": {
+                "$path": "src/UI/Menus/SettingsMenu.client.lua"
             }
         }
     }
