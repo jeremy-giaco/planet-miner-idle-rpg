@@ -22,8 +22,9 @@ local MOON_CONFIG = {
     planet = {
         radius   = Config.PLANET_RADIUS,
         center   = Config.PLANET_CENTER,
-        color    = Color3.fromRGB(192, 189, 202),   -- pale grey moon rock
-        material = Enum.Material.Rock,
+        color     = Color3.fromRGB(165, 163, 172),   -- pale grey lunar regolith
+        material  = Enum.Material.Rock,
+        -- textureId = "",  -- set to a valid Roblox DecalId for crater surface detail
     },
     base = {
         position  = Vector3.new(0, Config.PLANET_RADIUS, 0),  -- north pole
@@ -48,16 +49,16 @@ local PC = Config.PLANET_CENTER
 local function setupLighting()
     for _, obj in ipairs(Lighting:GetChildren()) do obj:Destroy() end
 
-    Lighting.Ambient                  = Color3.fromRGB(45, 44, 62)    -- dark fill so shadows read
-    Lighting.OutdoorAmbient           = Color3.fromRGB(55, 54, 75)
-    Lighting.Brightness               = 4.5                           -- strong directional for crisp shadows
-    Lighting.EnvironmentDiffuseScale  = 0.4
-    Lighting.EnvironmentSpecularScale = 0.9
-    Lighting.ClockTime                = 12                            -- sun at noon
-    Lighting.GeographicLatitude       = 90                            -- sun directly overhead the north pole
-    Lighting.FogStart = 2000
-    Lighting.FogEnd   = 4000
-    Lighting.FogColor = Color3.fromRGB(6, 5, 18)    -- deep space
+    Lighting.Ambient                  = Color3.fromRGB(18, 18, 28)    -- very dark space fill
+    Lighting.OutdoorAmbient           = Color3.fromRGB(22, 22, 35)
+    Lighting.Brightness               = 3.5                           -- harsh directional sun
+    Lighting.EnvironmentDiffuseScale  = 0.15                          -- minimal bounce light (no atmosphere)
+    Lighting.EnvironmentSpecularScale = 0.8
+    Lighting.ClockTime                = 12
+    Lighting.GeographicLatitude       = 90
+    Lighting.FogStart = 3000
+    Lighting.FogEnd   = 6000
+    Lighting.FogColor = Color3.fromRGB(2, 2, 8)     -- deep black space
 
     -- Space sky
     local sky = Instance.new("Sky")

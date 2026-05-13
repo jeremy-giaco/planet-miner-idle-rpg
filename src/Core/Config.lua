@@ -2,12 +2,12 @@
 return {
     -- Planet
     PLANET_NAME   = "Moon",
-    PLANET_RADIUS = 1024,
+    PLANET_RADIUS = 5000,
     PLANET_CENTER = Vector3.new(0, 0, 0),
 
     -- Drone repair station — centered on the base roof.
-    -- Roof top Y = PLANET_RADIUS + base height = 1024 + 44 = 1068. Base Z center = -100.
-    STATION_POS = Vector3.new(0, 1068, -100),
+    -- Roof top Y = PLANET_RADIUS + base height = 5000 + 44 = 5044. Base Z center = -100.
+    STATION_POS = Vector3.new(0, 5044, -100),
 
     -- Debris spawning
     DEBRIS_SPAWN_INTERVAL = 4,
