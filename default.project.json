@@ -19,6 +19,9 @@
             "DataStore": {
                 "$path": "src/Data/Server/DataStore.server.lua"
             },
+            "StatManager": {
+                "$path": "src/Data/Server/StatManager.server.lua"
+            },
             "GameSetup": {
                 "$path": "src/World/Server/GameSetup.server.lua"
             },

@@ -130,6 +130,12 @@ _G.PlayerData = {
             data.level  = data.level + 1
             xpNeeded    = math.floor(100 * (data.level ^ 1.5))
             print("[DataStore]", player.Name, "leveled up to", data.level)
+            -- Bump base stats on level up
+            data.stats.attack   = data.stats.attack   + 2
+            data.stats.defense  = data.stats.defense  + 2
+            data.stats.capacity = data.stats.capacity + 1
+            -- Notify StatManager to refresh
+            if _G.StatManager then _G.StatManager.refresh(player) end
         end
     end,
 }

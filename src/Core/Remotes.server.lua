@@ -24,6 +24,7 @@ local function bindable(name)
 end
 
 -- ── Client ↔ Server ───────────────────────────────────────────────────────────
+remote("StatsUpdated")        -- server → client: push updated stats to HUD
 remote("HitDebris")           -- client → server: laser hit a debris chunk
 remote("CollectFragment")     -- server → client: fragment added to inventory
 remote("CollectMetal")        -- server → client: metal added to inventory
