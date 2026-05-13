@@ -10,6 +10,9 @@
         },
 
         "ServerScriptService": {
+            "Remotes": {
+                "$path": "src/Core/Remotes.server.lua"
+            },
             "GameSetup": {
                 "$path": "src/World/Server/GameSetup.server.lua"
             },

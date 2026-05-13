@@ -16,35 +16,14 @@ end)
 local PLANET_CENTER = Config.PLANET_CENTER
 local PLANET_RADIUS = Config.PLANET_RADIUS
 
--- ── RemoteEvents ─────────────────────────────────────────────────────────────
+-- ── Remotes (created by Core/Remotes.server.lua) ─────────────────────────────
 
-local remotes = Instance.new("Folder")
-remotes.Name   = "Remotes"
-remotes.Parent = ReplicatedStorage
-
-local hitDebrisEvent       = Instance.new("RemoteEvent")
-hitDebrisEvent.Name        = "HitDebris"
-hitDebrisEvent.Parent      = remotes
-
-local collectFragmentEvent = Instance.new("RemoteEvent")
-collectFragmentEvent.Name  = "CollectFragment"
-collectFragmentEvent.Parent = remotes
-
-local collectMetalEvent    = Instance.new("RemoteEvent")
-collectMetalEvent.Name     = "CollectMetal"
-collectMetalEvent.Parent   = remotes
-
--- ── Shared BindableEvents ─────────────────────────────────────────────────────
--- DebrisSystem creates both so there is no circular WaitForChild deadlock.
--- RoverSystem and CoinSystem use WaitForChild to find them.
-
-local registerCollectible = Instance.new("BindableEvent")
-registerCollectible.Name   = "RegisterCollectible"
-registerCollectible.Parent = ReplicatedStorage
-
-local serverHitDebris = Instance.new("BindableEvent")
-serverHitDebris.Name   = "ServerHitDebris"
-serverHitDebris.Parent = ReplicatedStorage
+local remotes              = ReplicatedStorage:WaitForChild("Remotes")
+local hitDebrisEvent       = remotes:WaitForChild("HitDebris")
+local collectFragmentEvent = remotes:WaitForChild("CollectFragment")
+local collectMetalEvent    = remotes:WaitForChild("CollectMetal")
+local registerCollectible  = remotes:WaitForChild("RegisterCollectible")
+local serverHitDebris      = remotes:WaitForChild("ServerHitDebris")
 
 -- ── Folders ───────────────────────────────────────────────────────────────────
 

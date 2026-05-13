@@ -8,9 +8,9 @@ local RunService        = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 
-local registerCollectible = ReplicatedStorage:WaitForChild("RegisterCollectible", 10)
-local serverMetalEarned   = ReplicatedStorage:WaitForChild("ServerMetalEarned")
 local remotes             = ReplicatedStorage:WaitForChild("Remotes")
+local registerCollectible = remotes:WaitForChild("RegisterCollectible")
+local serverMetalEarned   = remotes:WaitForChild("ServerMetalEarned")
 local collectMetalEvent   = remotes:WaitForChild("CollectMetal")
 
 local oreFolder = Instance.new("Folder")

@@ -7,29 +7,17 @@ local RunService        = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 
+-- ── Remotes (created by Core/Remotes.server.lua) ─────────────────────────────
+
 local remotes              = ReplicatedStorage:WaitForChild("Remotes")
 local collectFragmentEvent = remotes:WaitForChild("CollectFragment")
 local collectMetalEvent    = remotes:WaitForChild("CollectMetal")
-local serverHitDebris      = ReplicatedStorage:WaitForChild("ServerHitDebris")
-local registerEvent        = ReplicatedStorage:WaitForChild("RegisterCollectible")
-
--- Remotes created here
-local setDroneModeEvent = Instance.new("RemoteEvent")
-setDroneModeEvent.Name   = "SetDroneMode"
-setDroneModeEvent.Parent = remotes
-
-local deductMetalEvent = Instance.new("RemoteEvent")
-deductMetalEvent.Name   = "DeductMetal"
-deductMetalEvent.Parent = remotes
-
-local droneHealthEvent = Instance.new("RemoteEvent")
-droneHealthEvent.Name   = "DroneHealthUpdate"
-droneHealthEvent.Parent = remotes
-
--- BindableEvent: CoinSystem fires this so we can track server-side metal counts
-local serverMetalEarned = Instance.new("BindableEvent")
-serverMetalEarned.Name   = "ServerMetalEarned"
-serverMetalEarned.Parent = ReplicatedStorage
+local setDroneModeEvent    = remotes:WaitForChild("SetDroneMode")
+local deductMetalEvent     = remotes:WaitForChild("DeductMetal")
+local droneHealthEvent     = remotes:WaitForChild("DroneHealthUpdate")
+local serverHitDebris      = remotes:WaitForChild("ServerHitDebris")
+local serverMetalEarned    = remotes:WaitForChild("ServerMetalEarned")
+local registerEvent        = remotes:WaitForChild("RegisterCollectible")
 
 -- ── Server-side metal inventory ───────────────────────────────────────────────
 -- Needed so ProximityPrompt rebuild can verify and deduct without trusting client.
