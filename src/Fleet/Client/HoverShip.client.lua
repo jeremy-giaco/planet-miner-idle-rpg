@@ -322,13 +322,9 @@ local function update(dt)
         end
 
         if beamTimer <= 0 and hitDebrisRemote then
-            local camRay = useTwinStick
-                and { Origin = newPos, Direction = (aimPos - newPos).Unit * BEAM_RANGE * 4 }
-                or  (function()
-                        local m = Players.LocalPlayer:GetMouse()
-                        return workspace.CurrentCamera:ScreenPointToRay(m.X, m.Y)
-                    end)()
-            local debrisHit = workspace:Raycast(camRay.Origin, camRay.Direction * BEAM_RANGE * 4, debrisRayParams)
+            -- Always fire damage ray from ship toward aimPos (not from camera)
+            local beamDir = (aimPos - newPos).Unit
+            local debrisHit = workspace:Raycast(newPos, beamDir * BEAM_RANGE * 4, debrisRayParams)
             if debrisHit then
                 hitDebrisRemote:FireServer(debrisHit.Instance)
                 beamTimer = BEAM_COOLDOWN
