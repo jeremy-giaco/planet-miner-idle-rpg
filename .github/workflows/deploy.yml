@@ -1,0 +1,45 @@
+name: Deploy to Roblox
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rojo
+        run: |
+          curl -L https://github.com/rojo-rbx/rojo/releases/latest/download/rojo-linux-x86_64.zip -o rojo.zip
+          unzip rojo.zip
+          chmod +x rojo
+          sudo mv rojo /usr/local/bin/rojo
+
+      - name: Build place file
+        run: rojo build default.project.json -o planet-miner-build.rbxl
+
+      - name: Create GitHub Release
+        id: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: release-${{ github.run_number }}
+          name: "Release #${{ github.run_number }}"
+          body: "Automated release from commit ${{ github.sha }}"
+          files: planet-miner-build.rbxl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to Roblox
+        run: |
+          curl -X POST \
+            "https://apis.roblox.com/universes/v1/${{ secrets.ROBLOX_UNIVERSE_ID }}/places/${{ secrets.ROBLOX_PLACE_ID }}/versions" \
+            -H "x-api-key: ${{ secrets.ROBLOX_API_KEY }}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @planet-miner-build.rbxl
