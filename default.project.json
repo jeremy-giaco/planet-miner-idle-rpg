@@ -5,25 +5,28 @@
 
         "ReplicatedStorage": {
             "Config": {
-                "$path": "src/ReplicatedStorage/Config.lua"
+                "$path": "src/Core/Config.lua"
             }
         },
 
         "ServerScriptService": {
-            "WorldGen": {
-                "$path": "src/ServerScriptService/WorldGen.lua"
-            },
             "GameSetup": {
-                "$path": "src/ServerScriptService/GameSetup.server.lua"
+                "$path": "src/World/Server/GameSetup.server.lua"
+            },
+            "WorldGen": {
+                "$path": "src/World/Server/WorldGen.lua"
             },
             "DebrisSystem": {
-                "$path": "src/ServerScriptService/DebrisSystem.server.lua"
+                "$path": "src/World/Server/DebrisSystem.server.lua"
             },
-            "RoverSystem": {
-                "$path": "src/ServerScriptService/RoverSystem.server.lua"
+            "TurretSetup": {
+                "$path": "src/Base/Server/TurretSetup.server.lua"
+            },
+            "DroneManager": {
+                "$path": "src/Fleet/Server/DroneManager.server.lua"
             },
             "CoinSystem": {
-                "$path": "src/ServerScriptService/CoinSystem.server.lua"
+                "$path": "src/Economics/Server/CoinSystem.server.lua"
             }
         },
 
@@ -31,23 +34,23 @@
             "$className": "StarterPlayer",
             "StarterPlayerScripts": {
                 "$className": "StarterPlayerScripts",
-                "TurretClient": {
-                    "$path": "src/StarterPlayerScripts/TurretClient.client.lua"
-                },
                 "ZoneDetector": {
-                    "$path": "src/StarterPlayerScripts/ZoneDetector.client.lua"
+                    "$path": "src/World/Client/ZoneDetector.client.lua"
+                },
+                "TurretClient": {
+                    "$path": "src/Base/Client/TurretClient.client.lua"
                 }
             },
             "StarterCharacterScripts": {
                 "$className": "StarterCharacterScripts",
-                "AutoEquip": {
-                    "$path": "src/StarterCharacterScripts/AutoEquip.client.lua"
+                "MoonGravity": {
+                    "$path": "src/Character/Client/MoonGravity.client.lua"
                 },
                 "Jetpack": {
-                    "$path": "src/StarterCharacterScripts/Jetpack.client.lua"
+                    "$path": "src/Character/Client/Jetpack.client.lua"
                 },
-                "MoonGravity": {
-                    "$path": "src/StarterCharacterScripts/MoonGravity.client.lua"
+                "AutoEquip": {
+                    "$path": "src/Character/Client/AutoEquip.client.lua"
                 }
             }
         },
@@ -60,17 +63,7 @@
                     "RequiresHandle": false
                 },
                 "HoverShip": {
-                    "$path": "src/StarterPack/HoverShip/HoverShip.client.lua"
-                }
-            },
-            "Shield": {
-                "$className": "Tool",
-                "$properties": {
-                    "ToolTip": "Shield",
-                    "RequiresHandle": false
-                },
-                "EnergyShield": {
-                    "$path": "src/StarterPack/EnergyShield/EnergyShield.client.lua"
+                    "$path": "src/Fleet/Client/HoverShip.client.lua"
                 }
             },
             "Laser": {
@@ -89,17 +82,27 @@
                     }
                 },
                 "LaserGun": {
-                    "$path": "src/StarterPack/LaserGun/LaserGun.client.lua"
+                    "$path": "src/Combat/Client/LaserGun.client.lua"
+                }
+            },
+            "Shield": {
+                "$className": "Tool",
+                "$properties": {
+                    "ToolTip": "Shield",
+                    "RequiresHandle": false
+                },
+                "EnergyShield": {
+                    "$path": "src/Combat/Client/EnergyShield.client.lua"
                 }
             }
         },
 
         "StarterGui": {
-            "InventoryUI": {
-                "$path": "src/StarterGui/InventoryUI.client.lua"
-            },
             "DroneUI": {
-                "$path": "src/StarterGui/DroneUI.client.lua"
+                "$path": "src/UI/HUD/DroneUI.client.lua"
+            },
+            "InventoryUI": {
+                "$path": "src/UI/HUD/InventoryUI.client.lua"
             }
         }
     }
