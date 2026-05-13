@@ -54,7 +54,7 @@ local function setupLighting()
     Lighting.Brightness               = 3.5                           -- harsh directional sun
     Lighting.EnvironmentDiffuseScale  = 0.15                          -- minimal bounce light (no atmosphere)
     Lighting.EnvironmentSpecularScale = 0.8
-    Lighting.ClockTime                = 12
+    Lighting.ClockTime                = 6.083  -- 6:05 am
     Lighting.GeographicLatitude       = 90
     Lighting.FogStart = 4000
     Lighting.FogEnd   = 7000
