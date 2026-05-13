@@ -5,10 +5,9 @@ return {
     PLANET_RADIUS = 700,
     PLANET_CENTER = Vector3.new(0, 0, 0),
 
-    -- Drone repair station — south of the base, on sphere surface.
-    -- surfaceY at z=180: sqrt(700²-180²) ≈ 676.6  (18.5 studs below pole level, barely noticeable)
-    -- South base wall is at z=+100; station sits ~80 studs beyond it.
-    STATION_POS = Vector3.new(0, 676.6, 180),
+    -- Drone repair station — centered on the base roof.
+    -- Roof top Y = PLANET_RADIUS + base height = 700 + 44 = 744. Base Z center = -100.
+    STATION_POS = Vector3.new(0, 744, -100),
 
     -- Debris spawning
     DEBRIS_SPAWN_INTERVAL = 4,

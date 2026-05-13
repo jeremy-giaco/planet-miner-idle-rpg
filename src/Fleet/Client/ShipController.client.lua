@@ -19,7 +19,7 @@ local shipsFolder = workspace:WaitForChild("PlayerShips")
 -- ── Constants ─────────────────────────────────────────────────────────────────
 
 local SPEED         = 280
-local HOVER_HEIGHT  = 16   -- 16 keeps ship above hangar floor (sphere curves ~11 st below flat floor at z=-127)
+local HOVER_HEIGHT  = 22   -- sphere curves ~18 st below flat floor at the bay doors (z=-155); need >20.5 to clear
 local HOVER_BOOST   = 120
 local ACCEL         = 8
 local ROLL_MAX      = math.rad(48)
@@ -364,6 +364,11 @@ local function exitShip()
         local tag = character:FindFirstChild("InShip")
         if tag then tag:Destroy() end
     end
+
+    -- Tell server to close the hangar door
+    local remotes = ReplicatedStorage:WaitForChild("Remotes")
+    local shipExitedRemote = remotes:FindFirstChild("ShipExited")
+    if shipExitedRemote then shipExitedRemote:FireServer() end
 
     -- Re-anchor and restore collision so ship sits properly when parked
     shipRoot.CanCollide = true

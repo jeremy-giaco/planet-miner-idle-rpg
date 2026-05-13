@@ -167,15 +167,52 @@ function WorldGen.buildBase(cfg)
     part(Vector3.new(0.25, 0.25, D + 2),
         Vector3.new(BX - W/2, BY + H + 1.6, BZ), col.neon, Enum.Material.Neon, false)
 
-    -- ── Rooftop antenna ───────────────────────────────────────────────────────
-    -- Ceiling top = BY + H + 4. Pole starts at BY + H + 10 (6 studs clear).
-    local antBase = H + 10          -- bottom of pole above BY
-    local antLen  = 22
-    part(Vector3.new(1.2, antLen, 1.2),
-        Vector3.new(BX + W/2 - 5, BY + antBase + antLen/2, BZ - D/2 + 5), col.panel, Enum.Material.Metal)
-    local antTip = part(Vector3.new(2, 0.7, 2),
-        Vector3.new(BX + W/2 - 5, BY + antBase + antLen + 0.35, BZ - D/2 + 5), col.neon, Enum.Material.Neon, false)
-    addLight(antTip, col.neon, 4, 50)
+    -- ── Exterior ramps (north + south doors) ─────────────────────────────────
+    local R2  = cfg.planet.radius
+    local PC2 = cfg.planet.center
+    local rampRun = 16   -- horizontal depth of each ramp
+
+    local function surfYAtZ(z)
+        local dz = z - PC2.Z
+        local inner = R2*R2 - dz*dz
+        return PC2.Y + (inner > 0 and math.sqrt(inner) or 0)
+    end
+
+    local function buildRamp(centerX, centerY, centerZ, rampLen, angleX)
+        local r = Instance.new("Part")
+        r.Size      = Vector3.new(DW, 1.2, rampLen)
+        r.CFrame    = CFrame.new(centerX, centerY, centerZ) * CFrame.Angles(angleX, 0, 0)
+        r.Anchored  = true; r.CanCollide = true; r.CastShadow = false
+        r.Color     = col.panel; r.Material = Enum.Material.Metal
+        r.Parent    = workspace
+        -- Neon edge strips along both sides
+        for _, sx in ipairs({ DW/2, -DW/2 }) do
+            local strip = Instance.new("Part")
+            strip.Size      = Vector3.new(0.25, 0.25, rampLen)
+            strip.CFrame    = CFrame.new(centerX + sx, centerY + 0.7, centerZ) * CFrame.Angles(angleX, 0, 0)
+            strip.Anchored  = true; strip.CanCollide = false; strip.CastShadow = false
+            strip.Color     = col.neon; strip.Material = Enum.Material.Neon
+            strip.Parent    = workspace
+            addLight(strip, col.neon, 0.6, 10)
+        end
+    end
+
+    -- South ramp: high end at z=BZ+D/2 (floor), low end at z=BZ+D/2+rampRun (surface)
+    local sFarZ  = BZ + D/2 + rampRun
+    local sSurfY = surfYAtZ(sFarZ)
+    local sRise  = BY - sSurfY
+    local sLen   = math.sqrt(rampRun*rampRun + sRise*sRise)
+    local sAng   = math.atan2(sRise, rampRun)
+    buildRamp(BX, (BY + sSurfY)/2, BZ + D/2 + rampRun/2, sLen, -sAng)
+
+    -- North ramp: high end at z=BZ-D/2 (floor), low end at z=BZ-D/2-rampRun (surface)
+    local nFarZ  = BZ - D/2 - rampRun
+    local nSurfY = surfYAtZ(nFarZ)
+    local nRise  = BY - nSurfY
+    local nLen   = math.sqrt(rampRun*rampRun + nRise*nRise)
+    local nAng   = math.atan2(nRise, rampRun)
+    buildRamp(BX, (BY + nSurfY)/2, BZ - D/2 - rampRun/2, nLen, nAng)
+
 end
 
 -- ── Hangar ───────────────────────────────────────────────────────────────────

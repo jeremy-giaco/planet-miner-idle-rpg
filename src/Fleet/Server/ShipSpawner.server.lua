@@ -157,12 +157,16 @@ local function spawnShip(player)
 
     -- ── Door logic (server-side) ──────────────────────────────────────────────
     local inShip = false
-    prompt.Triggered:Connect(function()
+    prompt.Triggered:Connect(function(triggeringPlayer)
         inShip = not inShip
         setDoor(inShip)
         prompt.ActionText = inShip and "Exit Ship" or "Enter Ship"
-        if not inShip then
-            -- Player exited — server reclaims authority, re-anchors, restores collision
+        if inShip then
+            -- Grant network ownership so client CFrame changes replicate to server
+            root.Anchored = false
+            pcall(function() root:SetNetworkOwner(triggeringPlayer) end)
+        else
+            -- Player exited via prompt — reclaim server authority
             pcall(function() root:SetNetworkOwner(nil) end)
             root.CanCollide = true
             root.Anchored   = true
@@ -207,8 +211,8 @@ task.spawn(function()
     end
 
     -- Find the RecallButton part and its ProximityPrompt
-    local recallBtn    = hangar:FindFirstChild("RecallButton", true)
-    local recallPrompt = recallBtn and recallBtn:FindFirstChildOfClass("ProximityPrompt")
+    local recallBtn    = hangar:WaitForChild("RecallButton", 30)
+    local recallPrompt = recallBtn and recallBtn:WaitForChild("ProximityPrompt", 10)
 
     if not recallPrompt then
         warn("[ShipSpawner] Recall button not found in Hangar")
@@ -221,25 +225,22 @@ task.spawn(function()
         local root = ship:FindFirstChild("ShipRoot")
         if not root then return end
 
-        -- Don't recall if player is currently flying it
         local char = player.Character
         if char and char:FindFirstChild("InShip") then return end
 
         recallPrompt.Enabled = false
 
-        -- Animate button press: push dome into wall then spring back
         local btnPart    = recallBtn
         local restPos    = btnPart.Position
-        local pressedPos = restPos + Vector3.new(0, 0, -0.5)   -- push toward wall (-Z)
+        local pressedPos = restPos + Vector3.new(0, 0, -0.5)
         TweenService:Create(btnPart, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.In),    { Position = pressedPos }):Play()
         task.wait(0.12)
         TweenService:Create(btnPart, TweenInfo.new(0.22, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), { Position = restPos    }):Play()
         task.wait(0.3)
 
         setDoor(true)
-        task.wait(2)    -- door opens
+        task.wait(2)
 
-        -- Reclaim server authority then anchor for tween
         pcall(function() root:SetNetworkOwner(nil) end)
         root.CanCollide = true
         root.Anchored   = true
@@ -251,14 +252,26 @@ task.spawn(function()
         tween:Play()
         tween.Completed:Wait()
 
-        task.wait(20)   -- leave door open so player can walk in
+        task.wait(20)
         setDoor(false)
         task.wait(2)
         recallPrompt.Enabled = true
-        print("[ShipSpawner] Recalled " .. player.Name .. "'s ship to hangar")
     end)
 
     print("[ShipSpawner] Recall console wired")
+end)
+
+-- Close door and reclaim ship when player exits via E key
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+remotes:WaitForChild("ShipExited").OnServerEvent:Connect(function(exitingPlayer)
+    local ship = shipsFolder:FindFirstChild(exitingPlayer.Name .. "_Ship")
+    local root = ship and ship:FindFirstChild("ShipRoot")
+    if root then
+        pcall(function() root:SetNetworkOwner(nil) end)
+        root.CanCollide = true
+        root.Anchored   = true
+    end
+    setDoor(false)
 end)
 
 print("[ShipSpawner] Active")
