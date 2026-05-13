@@ -66,21 +66,6 @@ function WorldGen.buildPlanet(cfg)
         sa.Parent = sphere
     end
     sphere.Parent    = workspace
-
-    -- Flat collision disk at the north pole surface as a fallback.
-    -- Large Ball parts may have unreliable physics collision at extreme sizes.
-    local floor = Instance.new("Part")
-    floor.Name      = "SurfaceFloor"
-    floor.Shape     = Enum.PartType.Cylinder
-    floor.Size      = Vector3.new(1, 2600, 2600)   -- 1300-stud radius covers MAP_RADIUS + margin
-    floor.CFrame    = CFrame.new(pc.center + Vector3.new(0, pc.radius - 0.5, 0))
-                      * CFrame.Angles(0, 0, math.pi/2)   -- cylinder axis → Y
-    floor.Anchored  = true
-    floor.CanCollide = true
-    floor.Transparency = 1
-    floor.CastShadow = false
-    floor.Parent    = workspace
-
     return sphere
 end
 
