@@ -3,6 +3,7 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService        = game:GetService("RunService")
 local UserInputService  = game:GetService("UserInputService")
+local TweenService      = game:GetService("TweenService")
 
 local player    = Players.LocalPlayer
 local camera    = workspace.CurrentCamera
@@ -105,7 +106,6 @@ local function flashBeam(startPos, endPos)
     if length < 0.1 then return end
     local cf = CFrame.lookAt(startPos, endPos) * CFrame.new(0, 0, -length / 2)
 
-    -- Core beam
     local beam = Instance.new("Part")
     beam.Anchored    = true
     beam.CanCollide  = false
@@ -117,7 +117,6 @@ local function flashBeam(startPos, endPos)
     beam.Color       = Config.LASER_COLOR
     beam.Parent      = workspace
 
-    -- Wide glow halo
     local glow = Instance.new("Part")
     glow.Anchored     = true
     glow.CanCollide   = false
@@ -130,14 +129,12 @@ local function flashBeam(startPos, endPos)
     glow.Transparency = 0.7
     glow.Parent       = workspace
 
-    -- Light along beam
     local light = Instance.new("PointLight")
     light.Color      = Config.LASER_COLOR
     light.Brightness = 8
     light.Range      = 30
     light.Parent     = beam
 
-    -- Muzzle flash
     local flash = Instance.new("Part")
     flash.Size        = Vector3.new(1.2, 1.2, 1.2)
     flash.Position    = startPos
@@ -149,7 +146,6 @@ local function flashBeam(startPos, endPos)
     flash.Shape       = Enum.PartType.Ball
     flash.Parent      = workspace
 
-    -- Impact flash at hit point
     local impact = Instance.new("Part")
     impact.Size        = Vector3.new(1.5, 1.5, 1.5)
     impact.Position    = endPos
@@ -161,7 +157,7 @@ local function flashBeam(startPos, endPos)
     impact.Shape       = Enum.PartType.Ball
     impact.Parent      = workspace
 
-    task.delay(0.18, function()
+    task.delay(0.05, function()
         if beam   and beam.Parent   then beam:Destroy()   end
         if glow   and glow.Parent   then glow:Destroy()   end
         if flash  and flash.Parent  then flash:Destroy()  end
@@ -169,36 +165,116 @@ local function flashBeam(startPos, endPos)
     end)
 end
 
+-- ── Fire animations ───────────────────────────────────────────────────────────
+
+local recoilInfo  = TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local recoverInfo = TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local turnInfo    = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local defaultC0 = {}
+
+local function getMotor(character, name)
+    return character:FindFirstChild(name, true)
+end
+
+local function cacheDefaults(character)
+    defaultC0 = {}
+    for _, name in ipairs({"RightShoulder", "Neck", "Waist"}) do
+        local m = getMotor(character, name)
+        if m and m.ClassName == "Motor6D" then
+            defaultC0[name] = m.C0
+        end
+    end
+end
+
+tool.Equipped:Connect(function()
+    local character = player.Character
+    if character then cacheDefaults(character) end
+end)
+
+local function animateFire(hitPos)
+    local character = player.Character
+    if not character then return end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    -- Arm recoil
+    local shoulder = getMotor(character, "RightShoulder")
+    if shoulder and shoulder.ClassName == "Motor6D" and defaultC0["RightShoulder"] then
+        local orig = defaultC0["RightShoulder"]
+        TweenService:Create(shoulder, recoilInfo,  { C0 = orig * CFrame.Angles(-math.rad(25), 0, 0) }):Play()
+        task.delay(0.06, function()
+            TweenService:Create(shoulder, recoverInfo, { C0 = orig }):Play()
+        end)
+    end
+
+    -- Torso + head turn toward target
+    local toTarget = hitPos - hrp.Position
+    local localDir = hrp.CFrame:VectorToObjectSpace(toTarget)
+    local yaw      = math.clamp(math.atan2(localDir.X, -localDir.Z), -math.rad(70), math.rad(70))
+    local flatDist = math.sqrt(localDir.X^2 + localDir.Z^2)
+    local pitch    = math.clamp(-math.atan2(localDir.Y, flatDist), -math.rad(40), math.rad(40))
+
+    if not defaultC0["Waist"] or not defaultC0["Neck"] then
+        cacheDefaults(character)
+    end
+
+    local waist = getMotor(character, "Waist")
+    local neck  = getMotor(character, "Neck")
+
+    if waist and waist.ClassName == "Motor6D" and defaultC0["Waist"] then
+        local orig = defaultC0["Waist"]
+        TweenService:Create(waist, turnInfo,    { C0 = orig * CFrame.Angles(0, -yaw * 0.5, 0) }):Play()
+        task.delay(0.18, function()
+            TweenService:Create(waist, recoverInfo, { C0 = orig }):Play()
+        end)
+    end
+
+    if neck and neck.ClassName == "Motor6D" and defaultC0["Neck"] then
+        local orig = defaultC0["Neck"]
+        TweenService:Create(neck, turnInfo,    { C0 = orig * CFrame.Angles(-yaw * 0.7, 0, pitch * 0.6) }):Play()
+        task.delay(0.18, function()
+            TweenService:Create(neck, recoverInfo, { C0 = orig }):Play()
+        end)
+    end
+end
+
 -- ── Fire ──────────────────────────────────────────────────────────────────────
 
 local function fire()
     if not canFire then return end
+    if not equipped then return end
     local character = player.Character
     if not character then return end
-    if not tool.Parent:IsA("Model") then return end
 
     canFire = false
 
-    -- Shoot toward mouse cursor in both 1st and 3rd person
     local mouse  = player:GetMouse()
     local camRay = camera:ScreenPointToRay(mouse.X, mouse.Y)
 
-    -- Aim ray from camera: shoot far in cursor direction for visual endpoint
-    local aimPos = camRay.Origin + camRay.Direction * Config.LASER_RANGE
+    local VISUAL_RANGE = 400
+    local aimPos = camRay.Origin + camRay.Direction * VISUAL_RANGE
 
-    -- Damage ray from handle toward cursor direction, only sees Debris folder
-    local aimDir = camRay.Direction  -- use camera direction directly, avoids offset issues
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Include
     params.FilterDescendantsInstances = {debrisFolder}
-    local result = workspace:Raycast(camRay.Origin, aimDir * Config.LASER_RANGE, params)
+    local result = workspace:Raycast(camRay.Origin, camRay.Direction * Config.LASER_RANGE, params)
 
     local hitPos = result and result.Position or aimPos
-    flashBeam(handle.Position, hitPos)
+    animateFire(hitPos)
+
+    -- Barrel tip with velocity correction so beam leads character movement
+    local tipRef  = tool:FindFirstChild("BarrelTip")
+    local basePos = (tipRef and tipRef.Value and tipRef.Value.Parent)
+        and tipRef.Value.Position
+        or handle.CFrame.Position
+    local hrp     = character:FindFirstChild("HumanoidRootPart")
+    local vel     = hrp and hrp.AssemblyLinearVelocity or Vector3.zero
+    local startPos = basePos + vel * (vel.Magnitude / 3000)
+    flashBeam(startPos, hitPos)
 
     if result and result.Instance then
         local inst = result.Instance
-        -- Walk up to the debris chunk root if we hit a child
         while inst and not inst:GetAttribute("IsDebris") do
             inst = inst.Parent
         end
@@ -212,13 +288,6 @@ end
 
 -- ── Input ─────────────────────────────────────────────────────────────────────
 
--- tool.Activated fires when clicking while the tool is held (reliable in all modes)
-tool.Activated:Connect(fire)
-
--- InputBegan as backup for cases where Activated doesn't fire (e.g. empty space)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and equipped then
-        fire()
-    end
+tool.Activated:Connect(function()
+    fire()
 end)
