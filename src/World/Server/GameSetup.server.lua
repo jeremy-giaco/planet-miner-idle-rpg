@@ -1,7 +1,17 @@
 -- Script → ServerScriptService/GameSetup
 local Lighting          = game:GetService("Lighting")
+local PhysicsService    = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+
+-- ── Collision groups ──────────────────────────────────────────────────────────
+-- "DebrisShield" stops Debris chunks but is invisible to players & ships.
+pcall(function()
+    PhysicsService:RegisterCollisionGroup("DebrisShield")
+    -- Players, characters, ships are in "Default" — pass straight through the shield
+    PhysicsService:CollisionGroupSetCollidable("DebrisShield", "Default", false)
+    -- "Debris" group (registered in DebrisSystem) still collides with DebrisShield (default = true)
+end)
 
 local Config   = require(ReplicatedStorage:WaitForChild("Config"))
 local WorldGen = require(ServerScriptService:WaitForChild("WorldGen"))
@@ -13,13 +23,13 @@ local MOON_CONFIG = {
         radius   = Config.PLANET_RADIUS,
         center   = Config.PLANET_CENTER,
         color    = Color3.fromRGB(192, 189, 202),   -- pale grey moon rock
-        material = Enum.Material.SmoothPlastic,
+        material = Enum.Material.Rock,
     },
     base = {
         position  = Vector3.new(0, Config.PLANET_RADIUS, 0),  -- north pole
         width     = 140,
         depth     = 200,
-        height    = 28,
+        height    = 44,
         doorWidth = 16,
         colors = {
             hull       = Color3.fromRGB(36, 42, 62),
@@ -203,12 +213,18 @@ print("[SkyBase] Planet built")
 WorldGen.buildBase(MOON_CONFIG)
 print("[SkyBase] Base built")
 
+WorldGen.buildHangar(MOON_CONFIG)
+print("[SkyBase] Hangar built")
+
+WorldGen.buildDebrisShield(MOON_CONFIG)
+print("[SkyBase] Debris shield built")
+
 -- Beacon towers at compass points around the base
 local NB_COLOR = Color3.fromRGB(60, 150, 255)
 WorldGen.buildBeacon(MOON_CONFIG,  160, 0,    NB_COLOR)
 WorldGen.buildBeacon(MOON_CONFIG, -160, 0,    NB_COLOR)
 WorldGen.buildBeacon(MOON_CONFIG,  0,   160,  NB_COLOR)
-WorldGen.buildBeacon(MOON_CONFIG,  0,  -160,  NB_COLOR)
+-- beacon at (0,-160) removed — it was directly in front of the hangar bay door
 print("[SkyBase] Beacons built")
 
 setupSpawn()

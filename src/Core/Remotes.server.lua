@@ -33,6 +33,7 @@ remote("CollectMetal")        -- server → client: metal added to inventory
 remote("DeductMetal")         -- server → client: metal spent
 remote("DroneHealthUpdate")   -- server → client: drone health/mode changed
 remote("SetDroneMode")        -- client → server: player changed drone mode
+remote("ShipExited")          -- client → server: player exited ship (close hangar door)
 
 -- ── Server ↔ Server ───────────────────────────────────────────────────────────
 bindable("RegisterCollectible")  -- debris system registers a new collectible

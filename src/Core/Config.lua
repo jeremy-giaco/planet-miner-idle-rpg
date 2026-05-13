@@ -2,11 +2,12 @@
 return {
     -- Planet
     PLANET_NAME   = "Moon",
-    PLANET_RADIUS = 700,
+    PLANET_RADIUS = 1024,
     PLANET_CENTER = Vector3.new(0, 0, 0),
 
-    -- Drone repair station — sits on sphere surface north of the base
-    STATION_POS = Vector3.new(0, 721.5, 0),
+    -- Drone repair station — centered on the base roof.
+    -- Roof top Y = PLANET_RADIUS + base height = 1024 + 44 = 1068. Base Z center = -100.
+    STATION_POS = Vector3.new(0, 1068, -100),
 
     -- Debris spawning
     DEBRIS_SPAWN_INTERVAL = 4,
@@ -41,5 +42,5 @@ return {
     LASER_DAMAGE   = 100,
     LASER_RANGE    = 8000,
     LASER_COOLDOWN = 0.25,
-    LASER_COLOR    = Color3.fromRGB(0, 230, 120),
+    LASER_COLOR    = Color3.fromRGB(255, 30, 30),
 }

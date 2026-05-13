@@ -48,6 +48,12 @@
             },
             "SettingsHandler": {
                 "$path": "src/Data/Server/SettingsHandler.server.lua"
+            },
+            "Spacesuit": {
+                "$path": "src/Character/Server/Spacesuit.server.lua"
+            },
+            "ShipSpawner": {
+                "$path": "src/Fleet/Server/ShipSpawner.server.lua"
             }
         },
 
@@ -57,6 +63,9 @@
                 "$className": "StarterPlayerScripts",
                 "ZoneDetector": {
                     "$path": "src/World/Client/ZoneDetector.client.lua"
+                },
+                "ShipController": {
+                    "$path": "src/Fleet/Client/ShipController.client.lua"
                 },
                 "TurretClient": {
                     "$path": "src/Base/Client/TurretClient.client.lua"
@@ -70,6 +79,9 @@
                 "Jetpack": {
                     "$path": "src/Character/Client/Jetpack.client.lua"
                 },
+                "Spacesuit": {
+                    "$path": "src/Character/Client/Spacesuit.client.lua"
+                },
                 "AutoEquip": {
                     "$path": "src/Character/Client/AutoEquip.client.lua"
                 }
@@ -77,33 +89,27 @@
         },
 
         "StarterPack": {
-            "Ship": {
-                "$className": "Tool",
-                "$properties": {
-                    "ToolTip": "Ship",
-                    "RequiresHandle": false
-                },
-                "HoverShip": {
-                    "$path": "src/Fleet/Client/HoverShip.client.lua"
-                }
-            },
             "Laser": {
                 "$className": "Tool",
                 "$properties": {
                     "ToolTip": "Laser",
-                    "RequiresHandle": true
+                    "RequiresHandle": true,
+                    "GripPos": [0, 0, -1]
                 },
                 "Handle": {
                     "$className": "Part",
                     "$properties": {
-                        "Size": [1, 0.5, 3],
-                        "Color": [0.0, 0.9, 0.4],
-                        "Material": "Neon",
+                        "Size": [0.18, 0.22, 1.1],
+                        "Color": [0.12, 0.14, 0.22],
+                        "Material": "Metal",
                         "CanCollide": false
                     }
                 },
                 "LaserGun": {
                     "$path": "src/Combat/Client/LaserGun.client.lua"
+                },
+                "GunModel": {
+                    "$path": "src/Combat/Client/LaserGunModel.client.lua"
                 }
             },
             "Shield": {
@@ -114,6 +120,16 @@
                 },
                 "EnergyShield": {
                     "$path": "src/Combat/Client/EnergyShield.client.lua"
+                }
+            },
+            "Beam": {
+                "$className": "Tool",
+                "$properties": {
+                    "ToolTip": "Beam",
+                    "RequiresHandle": false
+                },
+                "MiningBeam": {
+                    "$path": "src/Combat/Client/MiningBeam.client.lua"
                 }
             }
         },
@@ -127,6 +143,9 @@
             },
             "SettingsMenu": {
                 "$path": "src/UI/Menus/SettingsMenu.client.lua"
+            },
+            "Hotbar": {
+                "$path": "src/UI/HUD/Hotbar.client.lua"
             }
         }
     }

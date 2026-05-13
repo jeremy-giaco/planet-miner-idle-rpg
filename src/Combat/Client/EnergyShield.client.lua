@@ -11,7 +11,7 @@ local TweenService      = game:GetService("TweenService")
 local tool   = script.Parent
 local player = Players.LocalPlayer
 
-local SHIELD_RADIUS   = 9     -- studs — bubble size
+local SHIELD_RADIUS   = 5     -- studs — bubble size
 local ENERGY_MAX      = 100
 local ENERGY_DRAIN    = 22    -- per debris chunk destroyed
 local RECHARGE_RATE   = 12    -- energy per second while unequipped

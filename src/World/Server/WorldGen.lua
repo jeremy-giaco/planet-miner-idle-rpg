@@ -56,8 +56,15 @@ function WorldGen.buildPlanet(cfg)
     sphere.CanCollide = true
     sphere.CastShadow = false
     sphere.Color     = pc.color
-    sphere.Material  = pc.material or Enum.Material.SmoothPlastic
+    sphere.Material  = pc.material or Enum.Material.Rock
     sphere.CustomPhysicalProperties = PhysicalProperties.new(0.9, 0.6, 0.05, 0.5, 0.5)
+    if pc.textureId then
+        local sa = Instance.new("SurfaceAppearance")
+        sa.ColorMap   = pc.textureId
+        sa.RoughnessMap = pc.roughnessMap or ""
+        sa.NormalMap    = pc.normalMap    or ""
+        sa.Parent = sphere
+    end
     sphere.Parent    = workspace
     return sphere
 end
@@ -79,43 +86,53 @@ function WorldGen.buildBase(cfg)
     local seg = (W - DW) / 2         -- wall segment either side of door
 
     -- ── Foundation pad ───────────────────────────────────────────────────────
-    -- Raised platform that hides sphere-curvature intersection at edges.
-    part(Vector3.new(W + 20, 4, D + 20), Vector3.new(BX, BY - 2, BZ),
+    -- Buried deep enough that its bottom clears the sphere surface at the
+    -- furthest corner of the base+hangar footprint (worst gap ~12 st at R=1024).
+    part(Vector3.new(W + 20, 18, D + 20), Vector3.new(BX, BY - 9, BZ),
         col.foundation or col.panel, Enum.Material.SmoothPlastic)
 
     -- ── Floor ─────────────────────────────────────────────────────────────────
     part(Vector3.new(W, 3, D), Vector3.new(BX, BY + 1.5, BZ), col.panel)
 
-    -- ── Ceiling ───────────────────────────────────────────────────────────────
-    part(Vector3.new(W + 2, 4, D + 2), Vector3.new(BX, BY + H + 2, BZ), col.hull)
+    local GLASS_COL = Color3.fromRGB(140, 200, 255)
+    local GLASS_MAT = Enum.Material.Glass
+    local GLASS_T   = 0.3
 
-    -- ── Walls ─────────────────────────────────────────────────────────────────
-    -- North wall (two segments + lintel)
-    part(Vector3.new(seg, H, WT), Vector3.new(BX - W/2 + seg/2, BY + H/2 + 1, BZ - D/2), col.hull)
-    part(Vector3.new(seg, H, WT), Vector3.new(BX + W/2 - seg/2, BY + H/2 + 1, BZ - D/2), col.hull)
+    -- ── Ceiling (glass) ───────────────────────────────────────────────────────
+    -- 5-stud thickness prevents characters from falling through the glass roof.
+    part(Vector3.new(W + 2, 5, D + 2), Vector3.new(BX, BY + H + 2.5, BZ),
+        GLASS_COL, GLASS_MAT, true, GLASS_T)
+
+    -- ── Walls (glass) ─────────────────────────────────────────────────────────
+    -- North wall (two glass segments + opaque lintel above door)
+    part(Vector3.new(seg, H, WT), Vector3.new(BX - W/2 + seg/2, BY + H/2 + 1, BZ - D/2), GLASS_COL, GLASS_MAT, true, GLASS_T)
+    part(Vector3.new(seg, H, WT), Vector3.new(BX + W/2 - seg/2, BY + H/2 + 1, BZ - D/2), GLASS_COL, GLASS_MAT, true, GLASS_T)
     part(Vector3.new(DW, 3,  WT), Vector3.new(BX,               BY + H - 0.5, BZ - D/2), col.hull)
-    -- South wall (two segments + lintel)
-    part(Vector3.new(seg, H, WT), Vector3.new(BX - W/2 + seg/2, BY + H/2 + 1, BZ + D/2), col.hull)
-    part(Vector3.new(seg, H, WT), Vector3.new(BX + W/2 - seg/2, BY + H/2 + 1, BZ + D/2), col.hull)
+    -- South wall (two glass segments + opaque lintel above door)
+    part(Vector3.new(seg, H, WT), Vector3.new(BX - W/2 + seg/2, BY + H/2 + 1, BZ + D/2), GLASS_COL, GLASS_MAT, true, GLASS_T)
+    part(Vector3.new(seg, H, WT), Vector3.new(BX + W/2 - seg/2, BY + H/2 + 1, BZ + D/2), GLASS_COL, GLASS_MAT, true, GLASS_T)
     part(Vector3.new(DW, 3,  WT), Vector3.new(BX,               BY + H - 0.5, BZ + D/2), col.hull)
-    -- East wall (solid)
-    part(Vector3.new(WT, H, D), Vector3.new(BX + W/2, BY + H/2 + 1, BZ), col.hull)
-    -- West wall (solid)
-    part(Vector3.new(WT, H, D), Vector3.new(BX - W/2, BY + H/2 + 1, BZ), col.hull)
-
-    -- ── Windows (glass panels in east/west walls) ─────────────────────────────
-    part(Vector3.new(0.4, H * 0.45, D * 0.3),
-        Vector3.new(BX + W/2, BY + H * 0.6, BZ),
-        Color3.fromRGB(130, 200, 255), Enum.Material.Glass, false, 0.35)
-    part(Vector3.new(0.4, H * 0.45, D * 0.3),
-        Vector3.new(BX - W/2, BY + H * 0.6, BZ),
-        Color3.fromRGB(130, 200, 255), Enum.Material.Glass, false, 0.35)
+    -- East wall (glass)
+    part(Vector3.new(WT, H, D), Vector3.new(BX + W/2, BY + H/2 + 1, BZ), GLASS_COL, GLASS_MAT, true, GLASS_T)
+    -- West wall (glass)
+    part(Vector3.new(WT, H, D), Vector3.new(BX - W/2, BY + H/2 + 1, BZ), GLASS_COL, GLASS_MAT, true, GLASS_T)
 
     -- ── Corner pillars ────────────────────────────────────────────────────────
-    local ph = H + 8
+    -- Interior section: floor → ceiling (stays inside walls, no roof clip)
+    local ceilTop = H + 4           -- top face of ceiling slab
+    local intH    = ceilTop - 1     -- interior pillar height (BY+1 to BY+ceilTop)
     for _, xz in ipairs({{-W/2,-D/2},{W/2,-D/2},{-W/2,D/2},{W/2,D/2}}) do
-        part(Vector3.new(4, ph, 4),
-            Vector3.new(BX + xz[1], BY + ph/2 + 1, BZ + xz[2]), col.panel)
+        part(Vector3.new(4, intH, 4),
+            Vector3.new(BX + xz[1], BY + intH/2 + 1, BZ + xz[2]), col.panel)
+        -- Roof spire: sits cleanly on top of the ceiling
+        local spireH = 24
+        part(Vector3.new(3.2, spireH, 3.2),
+            Vector3.new(BX + xz[1], BY + ceilTop + spireH/2, BZ + xz[2]), col.panel)
+        -- Spire neon tip
+        local tip = part(Vector3.new(1.5, 0.6, 1.5),
+            Vector3.new(BX + xz[1], BY + ceilTop + spireH + 0.3, BZ + xz[2]),
+            col.neon, Enum.Material.Neon, false)
+        addLight(tip, col.neon, 1.5, 22)
     end
 
     -- ── Door frame neon ───────────────────────────────────────────────────────
@@ -158,12 +175,230 @@ function WorldGen.buildBase(cfg)
     part(Vector3.new(0.25, 0.25, D + 2),
         Vector3.new(BX - W/2, BY + H + 1.6, BZ), col.neon, Enum.Material.Neon, false)
 
-    -- ── Rooftop antenna ───────────────────────────────────────────────────────
-    part(Vector3.new(1.2, 14, 1.2),
-        Vector3.new(BX + W/2 - 5, BY + H + 8, BZ - D/2 + 5), col.panel, Enum.Material.Metal)
-    local antTip = part(Vector3.new(2, 0.7, 2),
-        Vector3.new(BX + W/2 - 5, BY + H + 15.4, BZ - D/2 + 5), col.neon, Enum.Material.Neon, false)
-    addLight(antTip, col.neon, 4, 50)
+    -- ── Exterior ramps (north + south doors) ─────────────────────────────────
+    local R2  = cfg.planet.radius
+    local PC2 = cfg.planet.center
+    local rampRun = 16   -- horizontal depth of each ramp
+
+    local function surfYAtZ(z)
+        local dz = z - PC2.Z
+        local inner = R2*R2 - dz*dz
+        return PC2.Y + (inner > 0 and math.sqrt(inner) or 0)
+    end
+
+    local function buildRamp(centerX, centerY, centerZ, rampLen, angleX)
+        local r = Instance.new("Part")
+        r.Size      = Vector3.new(DW, 1.2, rampLen)
+        r.CFrame    = CFrame.new(centerX, centerY, centerZ) * CFrame.Angles(angleX, 0, 0)
+        r.Anchored  = true; r.CanCollide = true; r.CastShadow = false
+        r.Color     = col.panel; r.Material = Enum.Material.Metal
+        r.Parent    = workspace
+        -- Neon edge strips along both sides
+        for _, sx in ipairs({ DW/2, -DW/2 }) do
+            local strip = Instance.new("Part")
+            strip.Size      = Vector3.new(0.25, 0.25, rampLen)
+            strip.CFrame    = CFrame.new(centerX + sx, centerY + 0.7, centerZ) * CFrame.Angles(angleX, 0, 0)
+            strip.Anchored  = true; strip.CanCollide = false; strip.CastShadow = false
+            strip.Color     = col.neon; strip.Material = Enum.Material.Neon
+            strip.Parent    = workspace
+            addLight(strip, col.neon, 0.6, 10)
+        end
+    end
+
+    local foundation = 10   -- foundation slab extends 10 studs past each wall
+
+    -- South ramp: high end at foundation edge (z=BZ+D/2+foundation), low end beyond
+    local sStartZ = BZ + D/2 + foundation
+    local sFarZ   = sStartZ + rampRun
+    local sSurfY  = surfYAtZ(sFarZ)
+    local sRise   = BY - sSurfY
+    local sLen    = math.sqrt(rampRun*rampRun + sRise*sRise)
+    local sAng    = math.atan2(sRise, rampRun)
+    buildRamp(BX, (BY + sSurfY)/2, sStartZ + rampRun/2, sLen, sAng)
+
+    -- North ramp: high end at foundation edge (z=BZ-D/2-foundation), low end beyond
+    local nStartZ = BZ - D/2 - foundation
+    local nFarZ   = nStartZ - rampRun
+    local nSurfY  = surfYAtZ(nFarZ)
+    local nRise   = BY - nSurfY
+    local nLen    = math.sqrt(rampRun*rampRun + nRise*nRise)
+    local nAng    = math.atan2(nRise, rampRun)
+    buildRamp(BX, (BY + nSurfY)/2, nStartZ - rampRun/2, nLen, -nAng)
+
+end
+
+-- ── Hangar ───────────────────────────────────────────────────────────────────
+-- Attached to the north face of the base. The existing north door becomes the
+-- hallway. A large sliding blast door faces outward on the north face.
+
+function WorldGen.buildHangar(cfg)
+    local bc  = cfg.base
+    local pos = bc.position
+    local W   = bc.width  or 60
+    local D   = bc.depth  or 80
+    local H   = bc.height or 12
+    local col = bc.colors
+
+    local BX, BY, BZ = pos.X, pos.Y, pos.Z
+    local northZ = BZ - D/2      -- Z of base north wall = -100
+
+    -- Hangar dims
+    local HW  = 100       -- hangar width  (X)
+    local HD  = 55        -- hangar depth  (Z, extending north)
+    local HH  = H + 14    -- hangar height (taller than base interior)
+    local WT  = 2.5   -- wall thickness
+    local bayW = 70   -- bay opening width
+    local bayH = 30   -- bay opening height
+    local conW = 20   -- connection opening width (south wall, into base)
+
+    -- World coords
+    local cx = BX
+    local cz = northZ - HD/2    -- hangar centre Z = -127.5
+    local fy = BY                -- floor level Y = 700
+
+    local folder = Instance.new("Folder")
+    folder.Name = "Hangar"; folder.Parent = workspace
+
+    local function hp(size, wx, wy, wz, color, mat, trans, collide)
+        local p = Instance.new("Part")
+        p.Size = size
+        p.Position = Vector3.new(wx, wy, wz)
+        p.Anchored = true
+        p.CanCollide = collide ~= false
+        p.CastShadow = false
+        p.Color = color
+        p.Material = mat or Enum.Material.Metal
+        p.Transparency = trans or 0
+        p.Parent = folder
+        return p
+    end
+
+    -- Foundation fill — buries hangar into sphere so no gap at edges
+    hp(Vector3.new(HW + 4, 18, HD + 4), cx, fy - 9, cz, col.foundation or col.hull)
+    -- Visible floor
+    hp(Vector3.new(HW, 3, HD), cx, fy+1.5, cz, col.panel)
+    -- Ceiling
+    hp(Vector3.new(HW+WT*2, 5, HD+WT*2), cx, fy+HH+2.5, cz, col.hull)
+
+    -- South wall (Z = northZ): opening aligned with base north door
+    local cs = (HW - conW)/2
+    hp(Vector3.new(cs, HH, WT), cx - HW/2 + cs/2, fy+HH/2+3, northZ, col.hull)
+    hp(Vector3.new(cs, HH, WT), cx + HW/2 - cs/2, fy+HH/2+3, northZ, col.hull)
+    hp(Vector3.new(conW, HH-H+2, WT), cx, fy+H+(HH-H+2)/2+1, northZ, col.hull)
+
+    -- North face (Z = northZ-HD): bay opening
+    local bs = (HW - bayW)/2
+    hp(Vector3.new(bs, HH, WT),       cx - HW/2 + bs/2, fy+HH/2+3, northZ-HD, col.hull)
+    hp(Vector3.new(bs, HH, WT),       cx + HW/2 - bs/2, fy+HH/2+3, northZ-HD, col.hull)
+    hp(Vector3.new(bayW, HH-bayH, WT), cx,               fy+bayH+(HH-bayH)/2+3, northZ-HD, col.hull)
+
+    -- Side walls
+    hp(Vector3.new(WT, HH, HD), cx+HW/2, fy+HH/2+3, cz, col.hull)
+    hp(Vector3.new(WT, HH, HD), cx-HW/2, fy+HH/2+3, cz, col.hull)
+
+    -- Corner pillars
+    for _, xz in ipairs({{-HW/2,-HD/2},{HW/2,-HD/2},{-HW/2,HD/2},{HW/2,HD/2}}) do
+        hp(Vector3.new(5, HH+6, 5), cx+xz[1], fy+HH/2+4, northZ+xz[2], col.panel)
+    end
+
+    -- Interior ceiling neon strips
+    local s1 = hp(Vector3.new(HW-12, 0.3, 0.7), cx, fy+HH+0.5, cz-HD/4, col.neon, Enum.Material.Neon, 0, false)
+    addLight(s1, col.neon, 4, 60)
+    local s2 = hp(Vector3.new(HW-12, 0.3, 0.7), cx, fy+HH+0.5, cz+HD/4, col.neon, Enum.Material.Neon, 0, false)
+    addLight(s2, col.neon, 4, 60)
+
+    -- Floor guide lines leading to bay
+    hp(Vector3.new(0.4, 0.2, HD-4), cx-bayW/2+2, fy+3.1, cz, col.neon, Enum.Material.Neon, 0, false)
+    hp(Vector3.new(0.4, 0.2, HD-4), cx+bayW/2-2, fy+3.1, cz, col.neon, Enum.Material.Neon, 0, false)
+
+    -- Bay door neon frame
+    local df = hp(Vector3.new(bayW+2, 0.5, 0.5), cx, fy+bayH+3.5, northZ-HD, col.neon, Enum.Material.Neon, 0, false)
+    addLight(df, col.neon, 3, 28)
+
+    -- ── Blast door (slides UP to open) ───────────────────────────────────────
+    local doorY_closed = fy + 3 + bayH/2  -- resting on floor
+    local doorY_open   = fy + 3 + bayH + bayH/2 + 2  -- fully retracted up
+    local door = hp(Vector3.new(bayW, bayH, 1.2),
+        cx, doorY_closed, northZ-HD, col.hull)
+    door.Name = "BayDoor"
+
+    -- Neon horizontal bands on door
+    for i = 0, 2 do
+        local band = hp(Vector3.new(bayW-2, 0.4, 0.2),
+            cx, doorY_closed - bayH/2 + (i+1)*(bayH/4), northZ-HD-0.7,
+            col.neon, Enum.Material.Neon, 0, false)
+        band.Name = "DoorBand"..i
+        addLight(band, col.neon, 1.5, 18)
+    end
+
+    -- Store open/closed Y in attributes for ShipSpawner to read
+    door:SetAttribute("ClosedY", doorY_closed)
+    door:SetAttribute("OpenY",   doorY_open)
+
+    -- ── Recall button — mounted on inside of south wall ──────────────────────
+    local RED      = Color3.fromRGB(220, 30,  30)
+    local HOUSING  = Color3.fromRGB(28,  28,  34)
+    local RING_COL = Color3.fromRGB(60,  62,  72)
+    local btnX     = cx + conW/2 + 6
+    local wallZ    = northZ + WT          -- inner face of south wall
+    local btnY     = fy + 9
+
+    -- Backing plate (rectangular, dark, flush with wall)
+    hp(Vector3.new(7, 9, 0.3), btnX, btnY, wallZ + 0.15, HOUSING, Enum.Material.Metal)
+    -- Collar ring: cylinder whose circular face points into the hangar (+Z)
+    -- Roblox cylinder axis = X by default; rotate 90° around Y to point along Z.
+    local collar = Instance.new("Part")
+    collar.Shape     = Enum.PartType.Cylinder
+    collar.Size      = Vector3.new(0.6, 4.2, 4.2)   -- depth, diameter, diameter — truly circular
+    collar.CFrame    = CFrame.new(btnX, btnY, wallZ + 0.6) * CFrame.Angles(0, math.rad(90), 0)
+    collar.Anchored  = true; collar.CanCollide = false; collar.CastShadow = false
+    collar.Color     = RING_COL; collar.Material = Enum.Material.Metal
+    collar.Parent    = folder
+
+    -- Dome: sphere so it looks perfectly circular from all angles (fire-alarm style)
+    local btn = Instance.new("Part")
+    btn.Name     = "RecallButton"
+    btn.Shape    = Enum.PartType.Ball
+    btn.Size     = Vector3.new(3.2, 3.2, 3.2)
+    btn.Position = Vector3.new(btnX, btnY, wallZ + 1.1)   -- protrudes from collar
+    btn.Anchored = true; btn.CanCollide = false; btn.CastShadow = false
+    btn.Color    = RED; btn.Material = Enum.Material.Neon
+    btn.Parent   = folder
+    addLight(btn, RED, 4, 18)
+
+    -- ── Sign above the button ─────────────────────────────────────────────────
+    -- Physical sign plate so it's visible even without BillboardGui
+    local signPlate = hp(Vector3.new(7, 2.2, 0.25), btnX, btnY + 5.8, wallZ + 0.15,
+        Color3.fromRGB(10, 10, 14), Enum.Material.SmoothPlastic)
+    local bb = Instance.new("BillboardGui")
+    bb.Size        = UDim2.new(0, 220, 0, 52)
+    bb.StudsOffset = Vector3.new(0, 0, 0.5)   -- float 0.5 studs in front of plate
+    bb.AlwaysOnTop = false
+    bb.MaxDistance = 40
+    bb.Parent      = signPlate
+    local lbl = Instance.new("TextLabel")
+    lbl.Size                   = UDim2.new(1, 0, 1, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text                   = "RECALL SHIP"
+    lbl.Font                   = Enum.Font.GothamBold
+    lbl.TextSize               = 20
+    lbl.TextColor3             = Color3.fromRGB(255, 255, 255)
+    lbl.TextStrokeColor3       = Color3.fromRGB(0, 0, 0)
+    lbl.TextStrokeTransparency = 0.3
+    lbl.Parent                 = bb
+
+    -- ProximityPrompt on the button dome
+    local prompt = Instance.new("ProximityPrompt")
+    prompt.ActionText            = "Recall Ship"
+    prompt.ObjectText            = "RECALL SHIP"
+    prompt.KeyboardKeyCode       = Enum.KeyCode.F
+    prompt.HoldDuration          = 0.4
+    prompt.RequiresLineOfSight   = false
+    prompt.MaxActivationDistance = 16
+    prompt.Parent                = btn
+
+    print("[WorldGen] Hangar built. Door closed Y=" .. doorY_closed .. " open Y=" .. doorY_open)
+    return folder
 end
 
 -- ── Beacon tower ─────────────────────────────────────────────────────────────
@@ -173,21 +408,62 @@ function WorldGen.buildBeacon(cfg, x, z, neonColor)
     local DARK  = Color3.fromRGB(32, 38, 58)
     local MID   = Color3.fromRGB(48, 56, 82)
 
-    part(Vector3.new(8, 1.5, 8),   Vector3.new(x, surfY + 0.75, z), MID)
-    part(Vector3.new(2.5, 28, 2.5), Vector3.new(x, surfY + 15.5, z), DARK)
-    local cap = part(Vector3.new(4.5, 0.8, 4.5),
-        Vector3.new(x, surfY + 30, z), neonColor, Enum.Material.Neon, false)
-    addLight(cap, neonColor, 3, 70)
-
-    local beacon = part(Vector3.new(1, 1, 1),
-        Vector3.new(x, surfY + 31, z), Color3.fromRGB(255, 50, 50), Enum.Material.Neon, false)
-    addLight(beacon, Color3.fromRGB(255, 50, 50), 4, 80)
+    -- Wide base pad
+    part(Vector3.new(10, 2, 10),    Vector3.new(x, surfY + 1,    z), MID)
+    -- Tall pole (80 studs — visible above the base roofline)
+    part(Vector3.new(2.5, 78, 2.5), Vector3.new(x, surfY + 41,   z), DARK)
+    -- Mid-section ring accent
+    local ring = part(Vector3.new(5, 0.6, 5),
+        Vector3.new(x, surfY + 40, z), neonColor, Enum.Material.Neon, false)
+    addLight(ring, neonColor, 1.5, 30)
+    -- Cap
+    local cap = part(Vector3.new(5, 1, 5),
+        Vector3.new(x, surfY + 81, z), neonColor, Enum.Material.Neon, false)
+    addLight(cap, neonColor, 4, 90)
+    -- Blinking warning light
+    local beacon = part(Vector3.new(1.2, 1.2, 1.2),
+        Vector3.new(x, surfY + 82.6, z), Color3.fromRGB(255, 50, 50), Enum.Material.Neon, false)
+    addLight(beacon, Color3.fromRGB(255, 50, 50), 5, 100)
     task.spawn(function()
         while beacon.Parent do
             beacon.Transparency = 0; task.wait(0.7)
             beacon.Transparency = 0.9; task.wait(0.7)
         end
     end)
+end
+
+-- ── Debris Shield (bubble) ────────────────────────────────────────────────────
+-- Invisible sphere that stops debris from entering the base compound.
+-- Uses "DebrisShield" collision group → passes players & ships, stops debris.
+
+function WorldGen.buildDebrisShield(cfg)
+    local bc  = cfg.base
+    local pos = bc.position
+    local BX, BY, BZ = pos.X, pos.Y, pos.Z
+    local col = bc.colors
+
+    -- Radius 300, centered 120 studs above the pole.
+    -- Bottom of sphere is BY-180 (underground), cross-section at ground level ≈275 studs.
+    -- Fully encloses base + hangar compound from all angles above.
+    local R = 300
+    local shield = Instance.new("Part")
+    shield.Name     = "DebrisShield"
+    shield.Shape    = Enum.PartType.Ball
+    shield.Size     = Vector3.new(R * 2, R * 2, R * 2)
+    shield.Position = Vector3.new(BX, BY + 120, BZ)
+    shield.Anchored = true
+    shield.CanCollide = true
+    shield.CastShadow = false
+    shield.Color    = col.neon
+    shield.Material = Enum.Material.Neon
+    -- Very faint bubble so players can just barely see the dome boundary
+    shield.Transparency = 0.97
+    pcall(function() shield.CollisionGroup = "DebrisShield" end)
+    shield.Parent = workspace
+
+
+    print("[WorldGen] Debris shield built. Radius=" .. R)
+    return shield
 end
 
 return WorldGen
