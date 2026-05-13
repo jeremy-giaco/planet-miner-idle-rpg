@@ -84,10 +84,10 @@ function WorldGen.buildBase(cfg)
         col.foundation or col.panel, Enum.Material.SmoothPlastic)
 
     -- ── Floor ─────────────────────────────────────────────────────────────────
-    part(Vector3.new(W, 1, D), Vector3.new(BX, BY + 0.5, BZ), col.panel)
+    part(Vector3.new(W, 3, D), Vector3.new(BX, BY + 1.5, BZ), col.panel)
 
     -- ── Ceiling ───────────────────────────────────────────────────────────────
-    part(Vector3.new(W + 1, 1, D + 1), Vector3.new(BX, BY + H + 1, BZ), col.hull)
+    part(Vector3.new(W + 2, 4, D + 2), Vector3.new(BX, BY + H + 2, BZ), col.hull)
 
     -- ── Walls ─────────────────────────────────────────────────────────────────
     -- North wall (two segments + lintel)

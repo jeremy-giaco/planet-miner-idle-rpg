@@ -9,6 +9,9 @@
             },
             "DataSchema": {
                 "$path": "src/Data/Shared/DataSchema.lua"
+            },
+            "VirtualJoystick": {
+                "$path": "src/UI/Shared/VirtualJoystick.lua"
             }
         },
 

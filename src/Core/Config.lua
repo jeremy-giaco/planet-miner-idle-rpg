@@ -1,6 +1,7 @@
 -- ModuleScript → place in ReplicatedStorage, rename to "Config"
 return {
     -- Planet
+    PLANET_NAME   = "Moon",
     PLANET_RADIUS = 700,
     PLANET_CENTER = Vector3.new(0, 0, 0),
 
