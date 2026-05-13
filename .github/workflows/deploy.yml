@@ -31,15 +31,24 @@ jobs:
         run: rojo build default.project.json -o planet-miner-build.rbxl
 
       - name: Create GitHub Release
-        id: release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: release-${{ github.run_number }}
-          name: "Release #${{ github.run_number }}"
-          body: "Automated release from commit ${{ github.sha }}"
-          files: planet-miner-build.rbxl
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="release-${{ github.run_number }}"
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            https://api.github.com/repos/${{ github.repository }}/releases \
+            -d "{\"tag_name\":\"$TAG\",\"name\":\"Release #${{ github.run_number }}\",\"body\":\"Automated release from ${{ github.sha }}\"}" \
+            > release.json
+          cat release.json
+          UPLOAD_URL=$(grep -o '"upload_url":"[^"]*"' release.json | sed 's/"upload_url":"//;s/".*//' | sed 's/{.*}//')
+          echo "Upload URL: $UPLOAD_URL"
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            "${UPLOAD_URL}?name=planet-miner-build.rbxl" \
+            --data-binary @planet-miner-build.rbxl \
+            > asset.json
+          cat asset.json
 
       - name: Upload to Roblox
         run: |
