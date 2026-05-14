@@ -180,8 +180,8 @@ local function getTools()
             end
         end
     end
-    -- Laser always first, then alphabetical
-    local PRIORITY = { LaserGun = 0, Laser = 0, Beam = 1, Shield = 2 }
+    -- Explicit order: Laser=1, Beam=2, Shield=3
+    local PRIORITY = { LaserGun = 1, Laser = 1, Beam = 2, Shield = 3 }
     table.sort(tools, function(a, b)
         local pa = PRIORITY[a] or 99
         local pb = PRIORITY[b] or 99
