@@ -92,6 +92,7 @@ end
 local function makeSlot(index, toolName)
     local frame = Instance.new("Frame")
     frame.Name                   = "Slot_" .. toolName
+    frame.LayoutOrder            = index
     frame.Size                   = UDim2.new(0, SLOT_W, 0, SLOT_H)
     frame.BackgroundColor3       = BG
     frame.BackgroundTransparency = 0.15
