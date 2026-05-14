@@ -30,7 +30,7 @@ local TEXT  = Color3.fromRGB(220, 210, 255)
 local DIM   = Color3.fromRGB(150, 135, 185)
 local SEL   = Color3.fromRGB(90, 55, 200)
 local UNSEL = Color3.fromRGB(30, 22, 65)
-local ALPHA = 0.0   -- fully opaque — buttons need to be clearly visible
+local ALPHA = 0.35  -- popup background transparency
 
 local ROW_H          = 26
 local BTN_H          = 36
@@ -154,17 +154,18 @@ local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
     local btn = Instance.new("TextButton")
     btn.Name   = label .. "TabBtn"
     btn.Size   = UDim2.new(1/3, 0, 1, 0)
-    applyBg(btn, ALPHA)
+    btn.BackgroundTransparency = 1   -- no background, just floating text
+    btn.BorderSizePixel = 0
     btn.Text   = icon .. " " .. label
-    btn.TextSize = 12
+    btn.TextSize = 13
     btn.Font   = Enum.Font.GothamBold
-    btn.TextColor3 = TEXT
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextStrokeColor3 = Color3.new(0, 0, 0)
+    btn.TextStrokeTransparency = 0.4
     btn.AutoButtonColor = false
     btn.LayoutOrder = order
     btn.ZIndex = 15
     btn.Parent = btnBar
-    corner(btn, 0)
-    stroke(btn, NEON, 0.5)
 
     -- Set popup X position after layout resolves (use popup's own width for centering)
     task.defer(function()
@@ -180,15 +181,12 @@ local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
     btn.MouseButton1Click:Connect(function()
         local opening = toggleFn()
         if opening then
-            -- close all others
             for _, fn in ipairs(allCloseFns) do
                 if fn ~= closeFn then fn() end
             end
-            btn.BackgroundTransparency = 0.25
-            btn.TextColor3 = Color3.fromRGB(255, 240, 130)
+            btn.TextColor3 = Color3.fromRGB(255, 240, 100)
         else
-            btn.BackgroundTransparency = ALPHA
-            btn.TextColor3 = TEXT
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
     end)
 
