@@ -1,5 +1,5 @@
--- LocalScript → inside the MiningBeam Tool in StarterPack
--- Hold LMB to fire a wide mining beam from the character toward the cursor.
+-- LocalScript → inside the Beam Tool in StarterPack
+-- Hold LMB to fire a wide beam from the character toward the cursor.
 -- Damages all debris in the beam volume each BEAM_COOLDOWN seconds.
 
 local RunService        = game:GetService("RunService")
@@ -69,8 +69,8 @@ local function buildBeam()
     beamObj = Instance.new("Beam")
     beamObj.Attachment0    = att0
     beamObj.Attachment1    = att1
-    beamObj.Width0         = BEAM_WIDTH
-    beamObj.Width1         = BEAM_WIDTH * 0.3
+    beamObj.Width0         = BEAM_WIDTH * 0.3
+    beamObj.Width1         = BEAM_WIDTH
     beamObj.LightEmission  = 1
     beamObj.LightInfluence = 0
     beamObj.Color          = ColorSequence.new({
@@ -90,8 +90,8 @@ local function buildBeam()
     beamGlow = Instance.new("Beam")
     beamGlow.Attachment0    = att0
     beamGlow.Attachment1    = att1
-    beamGlow.Width0         = BEAM_WIDTH * 2
-    beamGlow.Width1         = BEAM_WIDTH * 0.6
+    beamGlow.Width0         = BEAM_WIDTH * 0.6
+    beamGlow.Width1         = BEAM_WIDTH * 2
     beamGlow.LightEmission  = 1
     beamGlow.LightInfluence = 0
     beamGlow.Color          = ColorSequence.new(GLOW_COL)
