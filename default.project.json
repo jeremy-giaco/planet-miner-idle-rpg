@@ -69,6 +69,9 @@
         },
         "TurretClient": {
           "$path": "src/Base/Client/TurretClient.client.lua"
+        },
+        "HoverShip": {
+          "$path": "src/Fleet/Client/HoverShip.client.lua"
         }
       },
       "StarterCharacterScripts": {
@@ -150,6 +153,15 @@
       },
       "Hotbar": {
         "$path": "src/UI/HUD/Hotbar.client.lua"
+      },
+      "DroneUI": {
+        "$path": "src/UI/HUD/DroneUI.client.lua"
+      },
+      "InventoryUI": {
+        "$path": "src/UI/HUD/InventoryUI.client.lua"
+      },
+      "SettingsMenu": {
+        "$path": "src/UI/Menus/SettingsMenu.client.lua"
       }
     }
   }
