@@ -211,6 +211,9 @@ print("[SkyBase] Hangar built")
 WorldGen.buildDebrisShield(MOON_CONFIG)
 print("[SkyBase] Debris shield built")
 
+WorldGen.buildStorageRoom(MOON_CONFIG)
+print("[SkyBase] Storage room built")
+
 -- Beacon towers at compass points around the base
 local NB_COLOR = Color3.fromRGB(60, 150, 255)
 WorldGen.buildBeacon(MOON_CONFIG,  160, 0,    NB_COLOR)
