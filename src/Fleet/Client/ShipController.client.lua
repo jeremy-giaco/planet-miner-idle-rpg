@@ -3,6 +3,7 @@
 -- When inside: full ship flight controls. Exit with E again.
 
 local RunService        = game:GetService("RunService")
+if not RunService:IsClient() then return end
 local UserInputService  = game:GetService("UserInputService")
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

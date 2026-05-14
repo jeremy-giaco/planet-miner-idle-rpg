@@ -1,4 +1,5 @@
 -- LocalScript → StarterGui, rename to "InventoryUI"
+if not game:GetService("RunService"):IsClient() then return end
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")

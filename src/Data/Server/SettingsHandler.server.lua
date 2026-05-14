@@ -1,6 +1,7 @@
 -- Data/Server/SettingsHandler.server.lua
 -- Pushes saved settings to the client on join.
 -- Listens for SaveSettings remote to persist changes.
+if not game:GetService("RunService"):IsServer() then return end
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

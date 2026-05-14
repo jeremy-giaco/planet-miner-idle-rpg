@@ -1,8 +1,9 @@
 -- Script → ServerScriptService, rename to "RoverSystem"
+local RunService        = game:GetService("RunService")
+if not RunService:IsServer() then return end
 local Workspace         = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
-local RunService        = game:GetService("RunService")
 
 local Debris = game:GetService("Debris")
 local Config = require(ReplicatedStorage:WaitForChild("Config"))

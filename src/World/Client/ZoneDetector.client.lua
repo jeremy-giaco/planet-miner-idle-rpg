@@ -3,8 +3,9 @@
 -- updates an AREA: label at the top of the screen, and tweens the
 -- Lighting atmosphere when crossing a zone boundary.
 
-local Players       = game:GetService("Players")
 local RunService    = game:GetService("RunService")
+if not RunService:IsClient() then return end
+local Players       = game:GetService("Players")
 local TweenService  = game:GetService("TweenService")
 local Lighting      = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

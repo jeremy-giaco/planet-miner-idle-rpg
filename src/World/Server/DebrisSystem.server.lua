@@ -1,4 +1,5 @@
 -- Script → place in ServerScriptService, rename to "DebrisSystem"
+if not game:GetService("RunService"):IsServer() then return end
 local Workspace         = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")

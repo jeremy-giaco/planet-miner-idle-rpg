@@ -1,6 +1,7 @@
 -- Data/Server/DataStore.server.lua
 -- Handles all player data persistence via Roblox DataStoreService.
 -- Exposes a PlayerData module to other server scripts via _G.PlayerData.
+if not game:GetService("RunService"):IsServer() then return end
 
 local DataStoreService  = game:GetService("DataStoreService")
 local Players           = game:GetService("Players")

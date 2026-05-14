@@ -2,9 +2,10 @@
 -- Hold LMB to fire a wide mining beam from the character toward the cursor.
 -- Damages all debris in the beam volume each BEAM_COOLDOWN seconds.
 
+local RunService        = game:GetService("RunService")
+if not RunService:IsClient() then return end
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService        = game:GetService("RunService")
 local UserInputService  = game:GetService("UserInputService")
 
 local player     = Players.LocalPlayer

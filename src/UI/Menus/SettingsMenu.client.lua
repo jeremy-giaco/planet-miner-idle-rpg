@@ -1,6 +1,7 @@
 -- UI/Menus/SettingsMenu.client.lua
 -- In-game settings panel. Toggle with ⚙ button (top-left, below drone/cargo tabs).
 -- Saves changes to server immediately.
+if not game:GetService("RunService"):IsClient() then return end
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

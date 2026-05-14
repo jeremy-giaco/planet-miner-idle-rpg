@@ -4,6 +4,7 @@
 -- Energy drains per hit; recharges while unequipped.
 
 local RunService        = game:GetService("RunService")
+if not RunService:IsClient() then return end
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")

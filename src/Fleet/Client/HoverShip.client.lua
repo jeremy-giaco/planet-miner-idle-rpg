@@ -4,6 +4,7 @@
 -- Twin-stick (mobile): left stick = thrust/strafe | right stick = camera | FIRE btn = beam
 
 local RunService        = game:GetService("RunService")
+if not RunService:IsClient() then return end
 local UserInputService  = game:GetService("UserInputService")
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

@@ -1,4 +1,5 @@
 -- Script → ServerScriptService/GameSetup
+if not game:GetService("RunService"):IsServer() then return end
 local Lighting          = game:GetService("Lighting")
 local PhysicsService    = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

@@ -4,6 +4,7 @@
 -- relative to the planet rather than the global Y axis.
 
 local RunService        = game:GetService("RunService")
+if not RunService:IsClient() then return end
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config            = require(ReplicatedStorage:WaitForChild("Config"))
 

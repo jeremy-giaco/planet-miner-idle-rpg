@@ -1,5 +1,6 @@
 -- LocalScript → StarterGui/Sidebar
 -- Three independent popdown buttons at top of screen (right of Roblox buttons).
+if not game:GetService("RunService"):IsClient() then return end
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

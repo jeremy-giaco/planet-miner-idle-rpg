@@ -1,6 +1,7 @@
 -- ServerScript → ServerScriptService
 -- Spawns a personal ship inside the hangar for each player.
 -- Animates hangar blast door on enter/exit.
+if not game:GetService("RunService"):IsServer() then return end
 
 local Players           = game:GetService("Players")
 local TweenService      = game:GetService("TweenService")

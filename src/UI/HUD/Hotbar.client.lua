@@ -1,6 +1,7 @@
 -- LocalScript → StarterGui
 -- Custom tool hotbar replacing the default Roblox backpack UI.
 -- Slots auto-populate from the player's backpack. Click or press 1-9 to equip.
+if not game:GetService("RunService"):IsClient() then return end
 
 local Players           = game:GetService("Players")
 local StarterGui        = game:GetService("StarterGui")

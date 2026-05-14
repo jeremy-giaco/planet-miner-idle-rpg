@@ -2,8 +2,9 @@
 -- Jetpack: Space held = thrust away from planet center (radial up)
 -- Builds a visible thruster pack on the character's back with particle exhaust.
 
-local UserInputService  = game:GetService("UserInputService")
 local RunService        = game:GetService("RunService")
+if not RunService:IsClient() then return end
+local UserInputService  = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config            = require(ReplicatedStorage:WaitForChild("Config"))
 
