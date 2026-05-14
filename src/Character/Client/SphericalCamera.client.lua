@@ -1,10 +1,7 @@
 -- LocalScript → StarterCharacterScripts
--- Spherical camera: orbits the character with the surface normal as the
--- camera's up vector. This means the camera always looks "tangent" to the
--- sphere no matter where on the planet you are, so the built-in camera
--- input axes correctly map onto the surface.
---
--- Uses Scriptable CameraType — overrides the default Roblox follow-cam.
+-- Spherical orbit camera: tilts with the surface normal so WASD always
+-- moves along the planet surface regardless of latitude.
+-- RMB held = orbit  |  Scroll = zoom  |  no cursor lock by default.
 
 local RunService       = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -18,37 +15,49 @@ local hrp       = character:WaitForChild("HumanoidRootPart")
 local camera    = workspace.CurrentCamera
 
 -- ── Settings ──────────────────────────────────────────────────────────────────
-local DISTANCE    = 22      -- studs behind the character
-local HEIGHT      = 6       -- studs above the character shoulder level
-local SENSITIVITY = 0.004   -- mouse / touch sensitivity
-local MIN_PITCH   = math.rad(-25)   -- max look down
-local MAX_PITCH   = math.rad(60)    -- max look up
+local distance    = 28      -- current zoom distance (studs)
+local MIN_DIST    = 6
+local MAX_DIST    = 120
+local ZOOM_SPEED  = 4       -- studs per scroll tick
+local SENSITIVITY = 0.005
+local MIN_PITCH   = math.rad(-20)
+local MAX_PITCH   = math.rad(70)
 
 -- ── State ─────────────────────────────────────────────────────────────────────
-local yaw   = 0             -- angle around the surface normal (horizontal orbit)
-local pitch = math.rad(15)  -- angle above the surface horizon (vertical tilt)
+local yaw   = 0
+local pitch = math.rad(20)
+local rmbDown = false
 
 camera.CameraType = Enum.CameraType.Scriptable
-UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
 
 -- ── Input ─────────────────────────────────────────────────────────────────────
-UserInputService.InputChanged:Connect(function(input, gpe)
+UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        rmbDown = true
+        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        rmbDown = false
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input, gpe)
+    if input.UserInputType == Enum.UserInputType.MouseMovement and rmbDown then
         yaw   = yaw   - input.Delta.X * SENSITIVITY
         pitch = math.clamp(pitch - input.Delta.Y * SENSITIVITY, MIN_PITCH, MAX_PITCH)
-    elseif input.UserInputType == Enum.UserInputType.Touch then
-        -- touch delta is handled by the default JumpButton / thumbstick UI;
-        -- secondary finger drag = camera look
-        yaw   = yaw   - input.Delta.X * SENSITIVITY * 0.5
-        pitch = math.clamp(pitch - input.Delta.Y * SENSITIVITY * 0.5, MIN_PITCH, MAX_PITCH)
+    elseif input.UserInputType == Enum.UserInputType.MouseWheel then
+        distance = math.clamp(distance - input.Position.Z * ZOOM_SPEED, MIN_DIST, MAX_DIST)
     end
 end)
 
 -- ── Render loop ───────────────────────────────────────────────────────────────
 RunService.RenderStepped:Connect(function()
     if character:FindFirstChild("InShip") then
-        -- Let the ship scripts handle the camera
         camera.CameraType = Enum.CameraType.Custom
         return
     end
@@ -57,26 +66,19 @@ RunService.RenderStepped:Connect(function()
     local pos = hrp.Position
     local up  = (pos - PLANET_CENTER).Unit
 
-    -- Build a local frame on the sphere surface:
-    -- up   = surface normal (radially outward)
-    -- ref  = a world axis not parallel to up (for cross product)
-    -- east = tangent vector pointing "east" at this latitude
-    -- north= tangent vector pointing "north" (toward pole from equator)
+    -- Build a local surface frame (up = surface normal)
     local ref   = (math.abs(up.Y) < 0.9) and Vector3.new(0, 1, 0) or Vector3.new(1, 0, 0)
     local east  = up:Cross(ref).Unit
-    local north = east:Cross(up).Unit      -- completes the right-hand frame
+    local north = east:Cross(up).Unit
 
-    -- Rotate the camera horizontally (yaw around surface normal)
+    -- Apply yaw (horizontal orbit around surface normal)
     local cosY, sinY = math.cos(yaw), math.sin(yaw)
-    local camFwd   = north * cosY + east * sinY    -- horizontal forward (yaw applied)
-    local camRight = east  * cosY - north * sinY   -- horizontal right
+    local camFwd = north * cosY + east * sinY
 
-    -- Apply pitch: tilt camFwd toward/away from up
+    -- Apply pitch (tilt above/below the surface horizon)
     local cosP, sinP = math.cos(pitch), math.sin(pitch)
-    local camDir = camFwd * cosP + up * sinP        -- camera "forward into the scene"
+    local camDir = camFwd * cosP + up * sinP  -- direction from target to camera (reversed below)
 
-    -- Camera sits behind-and-above the character
-    local camPos = pos - camDir * DISTANCE + up * HEIGHT
-
+    local camPos = pos - camDir * distance + up * 1.5
     camera.CFrame = CFrame.lookAt(camPos, pos + up * 1.5, up)
 end)

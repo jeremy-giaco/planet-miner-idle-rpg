@@ -1,18 +1,19 @@
 -- LocalScript → StarterCharacterScripts
--- Spherical gravity + movement experiment.
+-- Spherical gravity + movement for planet walking.
 --
--- Gravity: keep workspace.Gravity at its normal value so Humanoid jump power
--- math stays intact. Each frame:
---   1. Cancel the global -Y gravity pull
---   2. Apply pull toward PLANET_CENTER
--- Net: gravity always points toward planet center.
+-- Gravity: uses a VectorForce that updates every frame.
+--   Force = +Y * mass * g   (cancel Roblox's global -Y pull)
+--         + (-up) * mass * g (add radial pull toward planet center)
+--   Net: gravity always points toward PLANET_CENTER.
+--   VectorForce runs at physics sub-step rate — no sliding from under-correction.
 --
--- Movement: WalkSpeed = 0 so Humanoid doesn't fight us. We read WASD and
--- project the camera's direction onto the surface tangent plane, then apply
--- that as tangential velocity directly. This fixes movement at the equator
--- where world-XZ projection of camera direction would be near-zero.
+-- Movement: WalkSpeed = 0, WASD read manually, camera axes projected onto
+--   the surface tangent plane so movement works at any latitude.
 --
--- BodyGyro: aligns HRP so character stands perpendicular to sphere surface.
+-- BodyGyro: aligns HRP so character stands on the sphere surface.
+--
+-- Safety: if player drifts more than 2× planet radius from center, teleport
+--   back to the north pole surface (prevents dying by falling into the void).
 
 local RunService        = game:GetService("RunService")
 if not RunService:IsClient() then return end
@@ -21,19 +22,32 @@ local UserInputService  = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config            = require(ReplicatedStorage:WaitForChild("Config"))
 
-local PLANET_CENTER = Config.PLANET_CENTER
-local PLANET_RADIUS = Config.PLANET_RADIUS
-local WALK_SPEED    = 48
-local RUN_SPEED     = 80     -- held Shift
+local PLANET_CENTER  = Config.PLANET_CENTER
+local PLANET_RADIUS  = Config.PLANET_RADIUS
+local WALK_SPEED     = 48
+local RUN_SPEED      = 80
+local SAFETY_RADIUS  = PLANET_RADIUS * 2.2   -- past this → teleport home
 
 local character = script.Parent
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 
-humanoid.WalkSpeed  = 0      -- we drive movement manually
-humanoid.AutoRotate = false   -- BodyGyro owns all rotation
+humanoid.WalkSpeed  = 0
+humanoid.AutoRotate = false
 
--- ── BodyGyro — aligns HRP so its Y axis = surface normal ─────────────────────
+-- ── VectorForce — spherical gravity ──────────────────────────────────────────
+-- Applied every physics sub-step; much more stable than Heartbeat velocity edits.
+
+local gravAtt = Instance.new("Attachment")
+gravAtt.Parent = hrp
+
+local gravForce = Instance.new("VectorForce")
+gravForce.Attachment0  = gravAtt
+gravForce.RelativeTo   = Enum.ActuatorRelativeTo.World
+gravForce.Force        = Vector3.zero
+gravForce.Parent       = hrp
+
+-- ── BodyGyro — surface orientation ───────────────────────────────────────────
 
 local bodyGyro     = Instance.new("BodyGyro")
 bodyGyro.MaxTorque = Vector3.new(4e5, 4e5, 4e5)
@@ -42,121 +56,113 @@ bodyGyro.D         = 400
 bodyGyro.CFrame    = CFrame.new()
 bodyGyro.Parent    = hrp
 
--- ── Spherical gravity ─────────────────────────────────────────────────────────
-
--- We track the "last good up" so we can redirect the Humanoid jump impulse.
--- When the Humanoid jumps it fires a +Y world impulse; we detect the sudden
--- upward velocity spike and re-orient it to be radially outward instead.
-local lastUp = Vector3.new(0, 1, 0)
+-- ── Main loop ─────────────────────────────────────────────────────────────────
 
 RunService.Heartbeat:Connect(function(dt)
     if not hrp.Parent then return end
-    if character:FindFirstChild("InShip") then return end
 
-    local pos = hrp.Position
+    local pos  = hrp.Position
     local fromCenter = pos - PLANET_CENTER
     local dist = fromCenter.Magnitude
     if dist < 1 then return end
 
-    local up   = fromCenter.Unit   -- radially outward = "up" for this player
-    lastUp = up
+    local up = fromCenter.Unit   -- radially outward = local "up"
+    local g  = workspace.Gravity
+    local mass = hrp.AssemblyMass
 
-    local g   = workspace.Gravity  -- studs/s²
-
-    -- 1. Cancel global -Y gravity that Roblox already applied this frame
-    -- 2. Apply gravity toward planet center
-    -- Net: replace -Y pull with -radial pull
-    local vel = hrp.AssemblyLinearVelocity
-    local cancelGlobal  = Vector3.new(0, g * dt, 0)    -- undo -Y
-    local sphericalPull = -up * g * dt                 -- toward center
-    hrp.AssemblyLinearVelocity = vel + cancelGlobal + sphericalPull
+    -- ── Gravity force ─────────────────────────────────────────────────────────
+    -- Cancel global -Y gravity and replace with pull toward planet center.
+    gravForce.Force = Vector3.new(0, mass * g, 0)   -- cancel global
+                    + (-up * mass * g)               -- add spherical
 
     -- ── BodyGyro orientation ──────────────────────────────────────────────────
-
-    local moveDir = humanoid.MoveDirection
-
-    local fwd
-    if moveDir.Magnitude > 0.1 then
-        fwd = moveDir - moveDir:Dot(up) * up
-    else
-        fwd = hrp.CFrame.LookVector
-        fwd = fwd - fwd:Dot(up) * up
+    if not character:FindFirstChild("InShip") then
+        local moveDir = humanoid.MoveDirection
+        local fwd
+        if moveDir.Magnitude > 0.1 then
+            fwd = moveDir - moveDir:Dot(up) * up
+        else
+            fwd = hrp.CFrame.LookVector
+            fwd = fwd - fwd:Dot(up) * up
+        end
+        if fwd.Magnitude < 0.01 then
+            fwd = Vector3.new(0, 0, -1) - Vector3.new(0, 0, -1):Dot(up) * up
+        end
+        if fwd.Magnitude < 0.01 then
+            fwd = Vector3.new(1, 0, 0) - Vector3.new(1, 0, 0):Dot(up) * up
+        end
+        bodyGyro.CFrame = CFrame.lookAt(Vector3.zero, fwd.Unit, up)
     end
-    if fwd.Magnitude < 0.01 then
-        fwd = Vector3.new(0, 0, -1) - Vector3.new(0, 0, -1):Dot(up) * up
-    end
-    if fwd.Magnitude < 0.01 then
-        fwd = Vector3.new(1, 0, 0) - Vector3.new(1, 0, 0):Dot(up) * up
-    end
-    fwd = fwd.Unit
 
-    bodyGyro.CFrame = CFrame.lookAt(Vector3.zero, fwd, up)
-
-    -- ── Surface-tangent movement ───────────────────────────────────────────────
-    -- Read WASD, project camera axes onto the surface tangent plane, apply velocity.
+    -- ── Surface-tangent movement ──────────────────────────────────────────────
     if character:FindFirstChild("InShip") then return end
 
-    local w = UserInputService:IsKeyDown(Enum.KeyCode.W) and 1 or 0
-    local s = UserInputService:IsKeyDown(Enum.KeyCode.S) and 1 or 0
-    local a = UserInputService:IsKeyDown(Enum.KeyCode.A) and 1 or 0
-    local d = UserInputService:IsKeyDown(Enum.KeyCode.D) and 1 or 0
+    local w     = UserInputService:IsKeyDown(Enum.KeyCode.W) and 1 or 0
+    local s     = UserInputService:IsKeyDown(Enum.KeyCode.S) and 1 or 0
+    local a     = UserInputService:IsKeyDown(Enum.KeyCode.A) and 1 or 0
+    local d     = UserInputService:IsKeyDown(Enum.KeyCode.D) and 1 or 0
     local shift = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
-        or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+               or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
 
     local speed = shift and RUN_SPEED or WALK_SPEED
     local inputFwd   = w - s
     local inputRight = d - a
 
-    local vel = hrp.AssemblyLinearVelocity
-    local radialVel = vel:Dot(up)       -- velocity component along surface normal (gravity/jump)
+    local vel        = hrp.AssemblyLinearVelocity
+    local radialVel  = vel:Dot(up)       -- gravity / jump component (preserve this)
 
     if inputFwd ~= 0 or inputRight ~= 0 then
-        -- Project camera axes onto the surface tangent plane
         local cam      = workspace.CurrentCamera
         local camLook  = cam.CFrame.LookVector
         local camRight = cam.CFrame.RightVector
 
+        -- Project camera axes onto the surface tangent plane
         local surfFwd   = camLook  - camLook:Dot(up)  * up
         local surfRight = camRight - camRight:Dot(up) * up
 
         if surfFwd.Magnitude   > 0.01 then surfFwd   = surfFwd.Unit   end
         if surfRight.Magnitude > 0.01 then surfRight = surfRight.Unit end
 
-        local moveDir = (surfFwd * inputFwd + surfRight * inputRight)
+        local moveDir = surfFwd * inputFwd + surfRight * inputRight
         if moveDir.Magnitude > 1 then moveDir = moveDir.Unit end
 
-        -- Preserve radial (gravity + jump) velocity, replace tangential
         hrp.AssemblyLinearVelocity = up * radialVel + moveDir * speed
     else
-        -- No input: bleed off tangential velocity (friction-like damping)
+        -- Damp tangential velocity (surface friction)
         local tangentVel = vel - up * radialVel
-        hrp.AssemblyLinearVelocity = up * radialVel + tangentVel * (1 - math.min(dt * 12, 1))
+        hrp.AssemblyLinearVelocity = up * radialVel
+                                   + tangentVel * (1 - math.min(dt * 14, 1))
+    end
+
+    -- ── Safety respawn ────────────────────────────────────────────────────────
+    if dist > SAFETY_RADIUS then
+        local safePos = PLANET_CENTER + Vector3.new(0, PLANET_RADIUS + 10, 0)
+        hrp.CFrame = CFrame.new(safePos)
+        hrp.AssemblyLinearVelocity = Vector3.zero
     end
 end)
 
--- ── Redirect Humanoid jump impulse ───────────────────────────────────────────
--- The Humanoid applies a +Y world-space impulse on jump.
--- We intercept StateChanged→Jumping and correct any misdirected velocity.
+-- ── Redirect Humanoid jump impulse to radially outward ───────────────────────
+
+local lastUp = Vector3.new(0, 1, 0)
+
+RunService.Heartbeat:Connect(function()
+    if hrp.Parent then
+        local d2 = (hrp.Position - PLANET_CENTER).Magnitude
+        if d2 > 1 then lastUp = (hrp.Position - PLANET_CENTER).Unit end
+    end
+end)
 
 humanoid.StateChanged:Connect(function(_, new)
     if new ~= Enum.HumanoidStateType.Jumping then return end
-
     task.defer(function()
-        -- By the time defer runs, Roblox has applied the jump impulse.
-        -- Extract the component that isn't radially outward and fix it.
-        local vel    = hrp.AssemblyLinearVelocity
-        local up     = lastUp
-        local radial = vel:Dot(up)   -- how much velocity is radially outward
-
-        -- If the jump gave us very little radial velocity, redirect the
-        -- global +Y component to radially outward.
-        local worldUp = Vector3.new(0, 1, 0)
-        local jumpY   = vel:Dot(worldUp)
-
+        local vel      = hrp.AssemblyLinearVelocity
+        local up       = lastUp
+        local worldUp  = Vector3.new(0, 1, 0)
+        local jumpY    = vel:Dot(worldUp)
+        local radial   = vel:Dot(up)
         if radial < jumpY * 0.5 and jumpY > 5 then
-            -- Remove the global Y component, add it radially
-            local corrected = vel - worldUp * jumpY + up * jumpY
-            hrp.AssemblyLinearVelocity = corrected
+            hrp.AssemblyLinearVelocity = vel - worldUp * jumpY + up * jumpY
         end
     end)
 end)
