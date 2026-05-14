@@ -19,8 +19,8 @@ local torso     = character:WaitForChild("UpperTorso")
 local THRUST          = 520    -- must exceed workspace.Gravity (196) to climb; 520 = strong lift
 local MAX_UP_SPEED    = 140   -- terminal ascent speed (studs/s)
 local JETPACK_DELAY   = 0.3   -- seconds of held Space before jetpack fires (on ground)
-local FORWARD_THRUST  = 380   -- horizontal boost while airborne and moving
-local MAX_HORIZ_SPEED = 80    -- max horizontal speed from jetpack (studs/s)
+local FORWARD_THRUST  = 580   -- horizontal boost while airborne and moving
+local MAX_HORIZ_SPEED = 120   -- max horizontal speed from jetpack (studs/s)
 
 -- ── Jetpack model ─────────────────────────────────────────────────────────────
 
