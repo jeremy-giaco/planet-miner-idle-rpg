@@ -45,6 +45,7 @@ local ROBLOX_RESERVED = 196
 local sg = Instance.new("ScreenGui")
 sg.Name = "Sidebar"; sg.ResetOnSpawn = false
 sg.IgnoreGuiInset = true
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 sg.Parent = playerGui
 
 -- ── Backdrop — invisible full-screen button; click anywhere to close popups ───
