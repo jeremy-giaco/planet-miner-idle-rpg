@@ -89,8 +89,8 @@ panelStroke.Color     = Color3.fromRGB(90, 50, 220)
 panelStroke.Thickness = 1.5
 panelStroke.Parent    = panel
 
-local OPEN_POS  = UDim2.new(0, TAB_W + 16, 0.5, -PANEL_H / 2)
-local CLOSE_POS = UDim2.new(0, -(PANEL_W + 20), 0.5, -PANEL_H / 2)
+local OPEN_POS  = UDim2.new(0, TAB_W + 16, 0, 20)          -- slot 1: top of stack
+local CLOSE_POS = UDim2.new(0, -(PANEL_W + 20), 0, 20)
 local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
 toggleBtn.MouseButton1Click:Connect(function()
@@ -119,7 +119,7 @@ local function onDragInput(input)
         panelStart.X.Scale, panelStart.X.Offset + delta.X,
         panelStart.Y.Scale, panelStart.Y.Offset + delta.Y)
     OPEN_POS  = panel.Position
-    CLOSE_POS = UDim2.new(0, -(PANEL_W + 20), panelStart.Y.Scale, panelStart.Y.Offset)
+    CLOSE_POS = UDim2.new(0, -(PANEL_W + 20), OPEN_POS.Y.Scale, OPEN_POS.Y.Offset)
 end
 header.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1

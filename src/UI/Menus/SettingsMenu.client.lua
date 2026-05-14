@@ -64,8 +64,8 @@ Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 10)
 do local s = Instance.new("UIStroke")
    s.Color = NEON; s.Thickness = 1.5; s.Parent = panel end
 
-local OPEN_POS  = UDim2.new(0, TAB_W + 16, 0.5, -(PANEL_H / 2) + TAB_H + 8)
-local CLOSE_POS = UDim2.new(0, -(PANEL_W + 20), 0.5, -(PANEL_H / 2) + TAB_H + 8)
+local OPEN_POS  = UDim2.new(0, TAB_W + 16, 0, 460)         -- slot 3: below cargo (252+200+8)
+local CLOSE_POS = UDim2.new(0, -(PANEL_W + 20), 0, 460)
 local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
 gearBtn.MouseButton1Click:Connect(function()

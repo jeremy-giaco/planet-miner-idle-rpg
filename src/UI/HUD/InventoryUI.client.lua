@@ -61,8 +61,8 @@ panel.BackgroundTransparency = 0.25
 panel.BorderSizePixel        = 0
 panel.Parent                 = screenGui
 
-local OPEN_POS  = UDim2.new(0, TAB_W + 16, 0.5, -PANEL_H / 2)
-local CLOSE_POS = UDim2.new(0, -(PANEL_W + 20), 0.5, -PANEL_H / 2)
+local OPEN_POS  = UDim2.new(0, TAB_W + 16, 0, 252)         -- slot 2: below drone (20+224+8)
+local CLOSE_POS = UDim2.new(0, -(PANEL_W + 20), 0, 252)
 local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
 local function updateToggleGlow()
@@ -100,7 +100,7 @@ do
             panelStart.X.Scale, panelStart.X.Offset + delta.X,
             panelStart.Y.Scale, panelStart.Y.Offset + delta.Y)
         OPEN_POS  = panel.Position
-        CLOSE_POS = UDim2.new(0, -(PANEL_W + 20), panelStart.Y.Scale, panelStart.Y.Offset)
+        CLOSE_POS = UDim2.new(0, -(PANEL_W + 20), OPEN_POS.Y.Scale, OPEN_POS.Y.Offset)
     end
     t.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1
