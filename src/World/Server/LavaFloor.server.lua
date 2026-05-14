@@ -29,7 +29,7 @@ local ZONES = {
     {
         name      = "Obsidian",
         y         = 880,
-        radius    = 1300,
+        radius    = 2200,
         colorA    = Color3.fromRGB(28,  22,  22),
         colorB    = Color3.fromRGB(45,  30,  28),
         neon      = false,
@@ -110,7 +110,7 @@ end
 local sign = Instance.new("Part")
 sign.Name        = "LavaSign"
 sign.Size        = Vector3.new(0.3, 6, 14)
-sign.CFrame      = CFrame.new(PC.X + 1260, 886, PC.Z)  -- just inside obsidian edge
+sign.CFrame      = CFrame.new(PC.X + 2160, 886, PC.Z)  -- just inside obsidian edge
 sign.Anchored    = true
 sign.CanCollide  = true
 sign.CastShadow  = false
