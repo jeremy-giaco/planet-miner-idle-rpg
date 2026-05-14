@@ -252,7 +252,7 @@ player.CharacterAdded:Connect(function(char)
     task.wait(0.1)
     rebuildHotbar()
     char.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") then updateHighlight() end
+        if child:IsA("Tool") then rebuildHotbar(); updateHighlight() end
     end)
     char.ChildRemoved:Connect(function(child)
         if child:IsA("Tool") then
