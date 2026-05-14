@@ -1,7 +1,9 @@
 -- LocalScript → inside the LaserGun Tool in StarterPack
+local RunService        = game:GetService("RunService")
+if not RunService:IsClient() then return end
+if not script.Parent:IsA("Tool") then return end
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService        = game:GetService("RunService")
 local UserInputService  = game:GetService("UserInputService")
 local TweenService      = game:GetService("TweenService")
 
@@ -16,8 +18,9 @@ local remotes        = ReplicatedStorage:WaitForChild("Remotes")
 local hitDebrisEvent = remotes:WaitForChild("HitDebris")
 local debrisFolder   = workspace:WaitForChild("Debris")
 
-local canFire  = true
-local equipped = false
+local canFire     = true
+local equipped    = false
+local pendingKill = {}   -- instances fired at but not yet replicated-destroyed
 
 -- ── Camera mode detection ─────────────────────────────────────────────────────
 
@@ -98,6 +101,23 @@ tool.Unequipped:Connect(function()
     UserInputService.MouseBehavior    = Enum.MouseBehavior.Default
     UserInputService.MouseIconEnabled = true
 end)
+
+-- ── Burn light ────────────────────────────────────────────────────────────────
+
+local BURN_COLOR = Color3.fromRGB(255, 55, 0)
+
+local function spawnBurnLight(pos)
+    local lp = Instance.new("Part")
+    lp.Anchored = true; lp.CanCollide = false; lp.Transparency = 1
+    lp.Size = Vector3.new(0.1, 0.1, 0.1); lp.Position = pos; lp.Parent = workspace
+    local pl = Instance.new("PointLight")
+    pl.Color = BURN_COLOR; pl.Brightness = 8; pl.Range = 30; pl.Parent = lp
+    task.delay(0.1, function()
+        if not lp.Parent then return end
+        TweenService:Create(pl, TweenInfo.new(0.5), {Brightness = 0}):Play()
+        task.delay(0.5, function() if lp.Parent then lp:Destroy() end end)
+    end)
+end
 
 -- ── Beam visual ───────────────────────────────────────────────────────────────
 
@@ -272,15 +292,42 @@ local function fire()
     local vel     = hrp and hrp.AssemblyLinearVelocity or Vector3.zero
     local startPos = basePos + vel * (vel.Magnitude / 3000)
     flashBeam(startPos, hitPos)
+    spawnBurnLight(hitPos)
 
-    if result and result.Instance then
-        local inst = result.Instance
+    -- Primary: Include-filter raycast (only hits CanQuery=true parts in Debris folder)
+    local inst = result and result.Instance
+    if inst then
         while inst and not inst:GetAttribute("IsDebris") do
             inst = inst.Parent
         end
-        if inst and inst:GetAttribute("IsDebris") then
-            hitDebrisEvent:FireServer(inst)
+    end
+
+    -- Fallback: second raycast with Exclude filter (skips character + non-debris)
+    -- This catches chunks that mouse.Target would see but the Include ray misses.
+    if not (inst and inst:GetAttribute("IsDebris")) then
+        local exParams = RaycastParams.new()
+        exParams.FilterType = Enum.RaycastFilterType.Exclude
+        exParams.FilterDescendantsInstances = { player.Character }
+        local r2 = workspace:Raycast(camRay.Origin, camRay.Direction * Config.LASER_RANGE, exParams)
+        if r2 and r2.Instance then
+            local i2 = r2.Instance
+            while i2 and not i2:GetAttribute("IsDebris") do
+                i2 = i2.Parent
+            end
+            if i2 and i2:GetAttribute("IsDebris") then
+                inst = i2
+            end
         end
+    end
+
+    -- Skip chunks we already fired at (server destroy hasn't replicated yet)
+    if inst and pendingKill[inst] then inst = nil end
+
+    if inst and inst:GetAttribute("IsDebris") then
+        pendingKill[inst] = true
+        -- Clear after replication window; instance will be gone by then anyway
+        task.delay(0.5, function() pendingKill[inst] = nil end)
+        hitDebrisEvent:FireServer(inst)
     end
 
     task.delay(Config.LASER_COOLDOWN, function() canFire = true end)

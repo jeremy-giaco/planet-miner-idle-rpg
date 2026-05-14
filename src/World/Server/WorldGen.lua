@@ -112,8 +112,13 @@ function WorldGen.buildBase(cfg)
     part(Vector3.new(seg, H, WT), Vector3.new(BX - W/2 + seg/2, BY + H/2 + 1, BZ + D/2), GLASS_COL, GLASS_MAT, true, GLASS_T)
     part(Vector3.new(seg, H, WT), Vector3.new(BX + W/2 - seg/2, BY + H/2 + 1, BZ + D/2), GLASS_COL, GLASS_MAT, true, GLASS_T)
     part(Vector3.new(DW, 3,  WT), Vector3.new(BX,               BY + H - 0.5, BZ + D/2), col.hull)
-    -- East wall (glass)
-    part(Vector3.new(WT, H, D), Vector3.new(BX + W/2, BY + H/2 + 1, BZ), GLASS_COL, GLASS_MAT, true, GLASS_T)
+    -- East wall (glass) — opening cut for storage room connection (20 wide, 36 tall)
+    local STORE_OW = 20   -- opening width (Z)
+    local STORE_OH = 36   -- opening height
+    local eseg = (D - STORE_OW) / 2
+    part(Vector3.new(WT, H, eseg), Vector3.new(BX + W/2, BY + H/2 + 1, BZ - STORE_OW/2 - eseg/2), GLASS_COL, GLASS_MAT, true, GLASS_T)
+    part(Vector3.new(WT, H, eseg), Vector3.new(BX + W/2, BY + H/2 + 1, BZ + STORE_OW/2 + eseg/2), GLASS_COL, GLASS_MAT, true, GLASS_T)
+    part(Vector3.new(WT, H - STORE_OH, STORE_OW), Vector3.new(BX + W/2, BY + STORE_OH + (H - STORE_OH)/2 + 1, BZ), col.hull)
     -- West wall (glass)
     part(Vector3.new(WT, H, D), Vector3.new(BX - W/2, BY + H/2 + 1, BZ), GLASS_COL, GLASS_MAT, true, GLASS_T)
 
@@ -144,10 +149,10 @@ function WorldGen.buildBase(cfg)
         Vector3.new(BX, BY + dh + 1, BZ + D/2), col.neon, Enum.Material.Neon, false)
     addLight(ds, col.neon, 1, 14)
 
-    -- ── Interior ceiling neon strips (3 rows) ────────────────────────────────
-    local stripOffsets = { -D/3, 0, D/3 }
+    -- ── Interior ceiling neon strips (5 rows) ────────────────────────────────
+    local stripOffsets = { -D*0.4, -D*0.15, 0, D*0.15, D*0.4 }
     for _, zo in ipairs(stripOffsets) do
-        local strip = part(Vector3.new(W - 8, 0.25, 0.5),
+        local strip = part(Vector3.new(W - 8, 0.3, 0.6),
             Vector3.new(BX, BY + H + 0.3, BZ + zo), col.neon, Enum.Material.Neon, false)
         addLight(strip, col.neon, 2.5, 45)
     end
@@ -157,10 +162,10 @@ function WorldGen.buildBase(cfg)
     for _, zo in ipairs(sconceOffsets) do
         local se = part(Vector3.new(0.3, 0.8, 1.8),
             Vector3.new(BX + W/2 - 0.3, BY + H * 0.5, BZ + zo), col.neon, Enum.Material.Neon, false)
-        addLight(se, col.neon, 1.8, 28)
+        addLight(se, col.neon, 2, 30)
         local sw = part(Vector3.new(0.3, 0.8, 1.8),
             Vector3.new(BX - W/2 + 0.3, BY + H * 0.5, BZ + zo), col.neon, Enum.Material.Neon, false)
-        addLight(sw, col.neon, 1.8, 28)
+        addLight(sw, col.neon, 2, 30)
     end
 
     -- ── Roof neon trim ────────────────────────────────────────────────────────
@@ -430,6 +435,235 @@ function WorldGen.buildBeacon(cfg, x, z, neonColor)
             beacon.Transparency = 0.9; task.wait(0.7)
         end
     end)
+end
+
+-- ── Storage Room ─────────────────────────────────────────────────────────────
+-- Bright industrial room attached to the east side of the base.
+-- Contains 9 resource bins (one per material type) in a U-shape.
+-- Bins are named "Bin_<ResourceName>" for the drone deposit system.
+
+function WorldGen.buildStorageRoom(cfg)
+    local bc  = cfg.base
+    local pos = bc.position
+    local W   = bc.width  or 60
+    local D   = bc.depth  or 80
+    local H   = bc.height or 12
+    local col = bc.colors
+
+    local BX, BY, BZ = pos.X, pos.Y, pos.Z
+
+    -- Room dimensions (extends east from base east wall)
+    local RW  = 90    -- room width (X)
+    local RD  = 120   -- room depth (Z)
+    local RH  = H     -- same height as base
+    local WT  = 2     -- wall thickness
+    local OW  = 20    -- opening width (Z, must match base east wall cut)
+    local OH  = 36    -- opening height (must match base east wall cut)
+
+    -- Room world-space center
+    local rx = BX + W/2 + RW/2   -- 0 + 70 + 45 = 115
+    local rz = BZ                 -- 0
+    local ry = BY                 -- 1019
+
+    -- Colors: match main base palette
+    local WALL_COL  = col.hull
+    local FLOOR_COL = col.panel
+    local CEIL_COL  = col.hull
+    local WARM_NEON = col.neon
+    local WARM_LITE = col.neon
+
+    local folder = Instance.new("Folder")
+    folder.Name = "StorageRoom"; folder.Parent = workspace
+
+    local function sp(size, wx, wy, wz, color, mat, trans, collide)
+        local p = Instance.new("Part")
+        p.Size = size; p.Position = Vector3.new(wx, wy, wz)
+        p.Anchored = true; p.CanCollide = collide ~= false; p.CastShadow = false
+        p.Color = color; p.Material = mat or Enum.Material.SmoothPlastic
+        p.Transparency = trans or 0; p.Parent = folder
+        return p
+    end
+    local function sl(parent, color, brightness, range)
+        local l = Instance.new("PointLight")
+        l.Color = color; l.Brightness = brightness; l.Range = range; l.Parent = parent
+    end
+
+    -- Foundation
+    sp(Vector3.new(RW+4, 18, RD+4), rx, ry-9, rz, col.foundation or col.panel)
+
+    -- Floor
+    sp(Vector3.new(RW, 3, RD), rx, ry+1.5, rz, FLOOR_COL)
+
+    -- Ceiling
+    sp(Vector3.new(RW+WT*2, 5, RD+WT*2), rx, ry+RH+2.5, rz, CEIL_COL)
+
+    -- East wall (far side)
+    sp(Vector3.new(WT, RH, RD), BX+W/2+RW, ry+RH/2+1, rz, WALL_COL)
+
+    -- North wall
+    sp(Vector3.new(RW+WT, RH, WT), rx-WT/2, ry+RH/2+1, rz-RD/2, WALL_COL)
+
+    -- South wall
+    sp(Vector3.new(RW+WT, RH, WT), rx-WT/2, ry+RH/2+1, rz+RD/2, WALL_COL)
+
+    -- West wall: no parts needed — the base east glass wall already provides this boundary.
+
+    -- Entrance neon frame
+    local nf = sp(Vector3.new(OW+1, 0.35, 0.35), BX+W/2, ry+OH+1, rz, WARM_NEON, Enum.Material.Neon, 0, false)
+    sl(nf, WARM_LITE, 2, 18)
+
+    -- STORAGE sign above entrance (inside the room, facing west)
+    local signPlate = sp(Vector3.new(20, 3.5, 0.3), BX+W/2+1, ry+OH+3.5, rz,
+        Color3.fromRGB(12, 12, 18), Enum.Material.SmoothPlastic)
+    do
+        local bb = Instance.new("BillboardGui")
+        bb.Size = UDim2.new(0, 280, 0, 56); bb.StudsOffset = Vector3.new(0, 0, 0.5)
+        bb.AlwaysOnTop = false; bb.MaxDistance = 60; bb.Parent = signPlate
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1,0,1,0); lbl.BackgroundTransparency = 1
+        lbl.Text = "⬡  STORAGE  ⬡"; lbl.Font = Enum.Font.GothamBold; lbl.TextSize = 20
+        lbl.TextColor3 = Color3.fromRGB(255,235,150)
+        lbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); lbl.TextStrokeTransparency = 0.2
+        lbl.Parent = bb
+    end
+
+    -- ── Ceiling light grid (6 panels, very bright) ──────────────────────────
+    local lightX = { BX+W/2 + RW*0.28, BX+W/2 + RW*0.72 }
+    local lightZ = { rz - RD*0.3, rz, rz + RD*0.3 }
+    for _, lx in ipairs(lightX) do
+        for _, lz in ipairs(lightZ) do
+            local panel = sp(Vector3.new(14, 0.35, 0.7), lx, ry+RH+0.4, lz, WARM_NEON, Enum.Material.Neon, 0, false)
+            sl(panel, WARM_LITE, 2.5, 45)
+        end
+    end
+    -- Extra fill lights near floor on north/south walls
+    for _, lz in ipairs({ rz-RD/2+1, rz+RD/2-1 }) do
+        local sconce = sp(Vector3.new(0.35, 1, 2), rx, ry+5, lz, WARM_NEON, Enum.Material.Neon, 0, false)
+        sl(sconce, WARM_LITE, 2, 28)
+    end
+
+    -- ── Corner pillars ───────────────────────────────────────────────────────
+    for _, xz in ipairs({ {BX+W/2, rz-RD/2}, {BX+W/2+RW, rz-RD/2}, {BX+W/2, rz+RD/2}, {BX+W/2+RW, rz+RD/2} }) do
+        sp(Vector3.new(3, RH+4, 3), xz[1], ry+RH/2+3, xz[2], col.panel)
+    end
+
+    -- ── Resource bins (U-shape: north wall, east wall, south wall) ───────────
+    local RESOURCES = {
+        { name="Rock",     color=Color3.fromRGB(130,100, 70) },
+        { name="Metal",    color=Color3.fromRGB(160,165,185) },
+        { name="Crystal",  color=Color3.fromRGB(130, 75,240) },
+        { name="Ice",      color=Color3.fromRGB(150,200,255) },
+        { name="Iron",     color=Color3.fromRGB(140,130,120) },
+        { name="Copper",   color=Color3.fromRGB(210,105, 55) },
+        { name="Silver",   color=Color3.fromRGB(200,205,220) },
+        { name="Gold",     color=Color3.fromRGB(220,170, 20) },
+        { name="Titanium", color=Color3.fromRGB(155,175,200) },
+    }
+    local BIN_W, BIN_D, BIN_H = 10, 10, 6
+    local BIN_Y = ry + 3 + BIN_H/2   -- sitting on floor
+    local BIN_TOP = ry + 3 + BIN_H   -- top surface Y
+
+    -- Bin positions: north wall (3), east wall (3), south wall (3)
+    local binPositions = {
+        -- North wall
+        { x = rx - 28, z = rz - RD/2 + 9 },
+        { x = rx,      z = rz - RD/2 + 9 },
+        { x = rx + 28, z = rz - RD/2 + 9 },
+        -- East wall
+        { x = BX+W/2+RW - 9, z = rz - 28 },
+        { x = BX+W/2+RW - 9, z = rz      },
+        { x = BX+W/2+RW - 9, z = rz + 28 },
+        -- South wall
+        { x = rx + 28, z = rz + RD/2 - 9 },
+        { x = rx,      z = rz + RD/2 - 9 },
+        { x = rx - 28, z = rz + RD/2 - 9 },
+    }
+
+    -- Material pile helpers
+    local METALS   = { Iron=true, Copper=true, Silver=true, Gold=true, Titanium=true, Metal=true }
+    local CHUNKS   = { Rock=true, Ice=true }
+    local CRYSTALS = { Crystal=true }
+
+    local function addPile(res, bx, bz)
+        local topY = BIN_TOP
+        if METALS[res.name] then
+            -- Stacked ingot bars
+            for row = 0, 2 do
+                local count = 3 - row
+                for c = 0, count - 1 do
+                    local ox = (c - (count-1)*0.5) * 2.2
+                    sp(Vector3.new(1.8, 0.7, 3.2),
+                        bx + ox, topY + 0.35 + row * 0.75, bz,
+                        res.color, Enum.Material.Metal, 0, false)
+                end
+            end
+        elseif CHUNKS[res.name] then
+            -- Rounded rubble mound
+            for _, off in ipairs({ {0,0,1.8}, {-1.6,0,0}, {1.6,0,0}, {0,0,-1.8}, {0,1.1,0} }) do
+                sp(Vector3.new(2.2, 2.2, 2.2),
+                    bx + off[1], topY + off[2] + 1.1, bz + off[3],
+                    res.color, Enum.Material.SmoothPlastic, 0, false)
+            end
+        elseif CRYSTALS[res.name] then
+            -- Spire cluster
+            for _, off in ipairs({ {0,0,0,3,5,3}, {-1.5,0,1.5,2,3.5,2}, {1.5,0,-1.5,1.5,4,1.5} }) do
+                local wedge = Instance.new("Part")
+                wedge.Size        = Vector3.new(off[4], off[5], off[6])
+                wedge.CFrame      = CFrame.new(bx+off[1], topY+off[5]/2, bz+off[3])
+                wedge.Anchored    = true; wedge.CanCollide = false
+                wedge.Material    = Enum.Material.Neon
+                wedge.Color       = res.color; wedge.Transparency = 0.2
+                wedge.Parent      = folder
+            end
+        end
+    end
+
+    for i, res in ipairs(RESOURCES) do
+        local bp = binPositions[i]
+
+        -- Main container body
+        local body = sp(Vector3.new(BIN_W, BIN_H, BIN_D), bp.x, BIN_Y, bp.z,
+            Color3.fromRGB(24, 28, 40), Enum.Material.Metal)
+        body.Name = "Bin_" .. res.name
+        body:SetAttribute("Count", 0)
+
+        -- Coloured indicator top (neon glow, resource colour)
+        local top = sp(Vector3.new(BIN_W, 0.4, BIN_D), bp.x, BIN_TOP + 0.2, bp.z,
+            res.color, Enum.Material.Neon, 0.2, false)
+        sl(top, res.color, 1.5, 12)
+
+        -- Side accent stripe
+        sp(Vector3.new(BIN_W+0.1, 0.5, 0.25), bp.x, BIN_Y + BIN_H*0.3, bp.z - BIN_D/2,
+            res.color, Enum.Material.Neon, 0.4, false)
+
+        -- Material pile on top
+        addPile(res, bp.x, bp.z)
+
+        -- Label billboard: name + count
+        local bb = Instance.new("BillboardGui")
+        bb.Size = UDim2.new(0, 140, 0, 50); bb.StudsOffset = Vector3.new(0, BIN_H/2 + 3.5, 0)
+        bb.AlwaysOnTop = false; bb.MaxDistance = 60; bb.Parent = body
+
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Name = "NameLabel"
+        nameLabel.Size = UDim2.new(1,0,0.55,0); nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = res.name:upper(); nameLabel.Font = Enum.Font.GothamBold; nameLabel.TextSize = 14
+        nameLabel.TextColor3 = Color3.fromRGB(255,255,255)
+        nameLabel.TextStrokeColor3 = Color3.fromRGB(0,0,0); nameLabel.TextStrokeTransparency = 0.15
+        nameLabel.Parent = bb
+
+        local countLabel = Instance.new("TextLabel")
+        countLabel.Name = "CountLabel"
+        countLabel.Size = UDim2.new(1,0,0.45,0); countLabel.Position = UDim2.new(0,0,0.55,0)
+        countLabel.BackgroundTransparency = 1
+        countLabel.Text = "× 0"; countLabel.Font = Enum.Font.GothamBold; countLabel.TextSize = 13
+        countLabel.TextColor3 = res.color
+        countLabel.TextStrokeColor3 = Color3.fromRGB(0,0,0); countLabel.TextStrokeTransparency = 0.15
+        countLabel.Parent = bb
+    end
+
+    print("[WorldGen] Storage room built")
+    return folder
 end
 
 -- ── Debris Shield (bubble) ────────────────────────────────────────────────────

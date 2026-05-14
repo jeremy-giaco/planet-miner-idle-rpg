@@ -1,10 +1,12 @@
--- LocalScript → inside the MiningBeam Tool in StarterPack
--- Hold LMB to fire a wide mining beam from the character toward the cursor.
+-- LocalScript → inside the Beam Tool in StarterPack
+-- Hold LMB to fire a wide beam from the character toward the cursor.
 -- Damages all debris in the beam volume each BEAM_COOLDOWN seconds.
 
+local RunService        = game:GetService("RunService")
+if not RunService:IsClient() then return end
+if not script.Parent:IsA("Tool") then return end
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService        = game:GetService("RunService")
 local UserInputService  = game:GetService("UserInputService")
 
 local player     = Players.LocalPlayer
@@ -26,6 +28,23 @@ local GLOW_COL      = Color3.fromRGB(80, 180, 255)
 local equipped  = false
 local firing    = false
 local beamTimer = 0
+local fireTimer = 0
+
+local BURN_COLOR = Color3.fromRGB(255, 55, 0)
+local BURN_FADE  = 0.5
+
+local function spawnBurnLight(pos)
+    local lp = Instance.new("Part")
+    lp.Anchored = true; lp.CanCollide = false; lp.Transparency = 1
+    lp.Size = Vector3.new(0.1, 0.1, 0.1); lp.Position = pos; lp.Parent = workspace
+    local pl = Instance.new("PointLight")
+    pl.Color = BURN_COLOR; pl.Brightness = 6; pl.Range = 28; pl.Parent = lp
+    task.delay(0.1, function()
+        if not lp.Parent then return end
+        game:GetService("TweenService"):Create(pl, TweenInfo.new(BURN_FADE), {Brightness = 0}):Play()
+        task.delay(BURN_FADE, function() if lp.Parent then lp:Destroy() end end)
+    end)
+end
 
 -- ── Beam visual (Beam object between two attachments) ─────────────────────────
 
@@ -36,7 +55,7 @@ local beamGlow       = nil
 local beamLight      = nil
 
 local overlapParams = OverlapParams.new()
-overlapParams.FilterType = Enum.RaycastFilterType.Include
+overlapParams.FilterType = Enum.RaycastFilterType.Exclude
 
 local function buildBeam()
     local character = player.Character
@@ -48,7 +67,9 @@ local function buildBeam()
     beamOrigin = Instance.new("Part")
     beamOrigin.Size = Vector3.new(0.1, 0.1, 0.1)
     beamOrigin.Transparency = 1; beamOrigin.CanCollide = false
-    beamOrigin.Anchored = false; beamOrigin.Parent = character
+    beamOrigin.Anchored = false
+    beamOrigin.CFrame = torso.CFrame  -- must match before weld locks the offset
+    beamOrigin.Parent = character
     local weld = Instance.new("WeldConstraint")
     weld.Part0 = torso; weld.Part1 = beamOrigin; weld.Parent = beamOrigin
 
@@ -65,8 +86,8 @@ local function buildBeam()
     beamObj = Instance.new("Beam")
     beamObj.Attachment0    = att0
     beamObj.Attachment1    = att1
-    beamObj.Width0         = BEAM_WIDTH
-    beamObj.Width1         = BEAM_WIDTH * 0.3
+    beamObj.Width0         = BEAM_WIDTH * 0.3
+    beamObj.Width1         = BEAM_WIDTH
     beamObj.LightEmission  = 1
     beamObj.LightInfluence = 0
     beamObj.Color          = ColorSequence.new({
@@ -86,8 +107,8 @@ local function buildBeam()
     beamGlow = Instance.new("Beam")
     beamGlow.Attachment0    = att0
     beamGlow.Attachment1    = att1
-    beamGlow.Width0         = BEAM_WIDTH * 2
-    beamGlow.Width1         = BEAM_WIDTH * 0.6
+    beamGlow.Width0         = BEAM_WIDTH * 0.6
+    beamGlow.Width1         = BEAM_WIDTH * 2
     beamGlow.LightEmission  = 1
     beamGlow.LightInfluence = 0
     beamGlow.Color          = ColorSequence.new(GLOW_COL)
@@ -171,6 +192,12 @@ local function startFiring()
         beamGlow.Enabled  = true
         beamLight.Enabled = true
 
+        fireTimer = fireTimer - dt
+        if fireTimer <= 0 then
+            spawnBurnLight(aimPos)
+            fireTimer = 0.05
+        end
+
         beamTimer = beamTimer - dt
         if beamTimer <= 0 then
             damageBeam(camDir)
@@ -190,8 +217,7 @@ end
 
 tool.Equipped:Connect(function()
     equipped = true
-    -- Set debris filter now that folder is guaranteed to exist
-    overlapParams.FilterDescendantsInstances = {workspace:WaitForChild("Debris")}
+    overlapParams.FilterDescendantsInstances = {player.Character}
     buildBeam()
     startFiring()
 end)

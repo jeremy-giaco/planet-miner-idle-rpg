@@ -1,4 +1,5 @@
 -- Script → ServerScriptService/GameSetup
+if not game:GetService("RunService"):IsServer() then return end
 local Lighting          = game:GetService("Lighting")
 local PhysicsService    = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -188,7 +189,7 @@ end
 
 -- ── Run ──────────────────────────────────────────────────────────────────────
 
-workspace.Gravity = 60   -- standard-ish, works fine at the north pole
+workspace.Gravity = 196.2   -- default Roblox gravity; jetpack handles upward thrust separately
 
 pcall(function() workspace.Terrain:Clear() end)
 local bp = workspace:FindFirstChild("Baseplate")
@@ -210,6 +211,9 @@ print("[SkyBase] Hangar built")
 
 WorldGen.buildDebrisShield(MOON_CONFIG)
 print("[SkyBase] Debris shield built")
+
+WorldGen.buildStorageRoom(MOON_CONFIG)
+print("[SkyBase] Storage room built")
 
 -- Beacon towers at compass points around the base
 local NB_COLOR = Color3.fromRGB(60, 150, 255)

@@ -136,8 +136,8 @@
           "ToolTip": "Beam",
           "RequiresHandle": false
         },
-        "MiningBeam": {
-          "$path": "src/Combat/Client/MiningBeam.client.lua"
+        "Beam": {
+          "$path": "src/Combat/Client/Beam.client.lua"
         }
       }
     },

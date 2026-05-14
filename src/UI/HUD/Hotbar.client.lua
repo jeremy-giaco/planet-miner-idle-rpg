@@ -1,10 +1,12 @@
 -- LocalScript → StarterGui
 -- Custom tool hotbar replacing the default Roblox backpack UI.
 -- Slots auto-populate from the player's backpack. Click or press 1-9 to equip.
+if not game:GetService("RunService"):IsClient() then return end
 
 local Players           = game:GetService("Players")
 local StarterGui        = game:GetService("StarterGui")
-local UserInputService  = game:GetService("UserInputService")
+local UserInputService      = game:GetService("UserInputService")
+local ContextActionService  = game:GetService("ContextActionService")
 local RunService        = game:GetService("RunService")
 
 local player    = Players.LocalPlayer
@@ -51,11 +53,12 @@ container.Size                   = UDim2.new(0, 1, 0, SLOT_H)  -- resized dynami
 container.Parent                 = sg
 
 local layout = Instance.new("UIListLayout")
-layout.FillDirection  = Enum.FillDirection.Horizontal
+layout.FillDirection       = Enum.FillDirection.Horizontal
+layout.SortOrder           = Enum.SortOrder.LayoutOrder
 layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 layout.VerticalAlignment   = Enum.VerticalAlignment.Center
-layout.Padding        = UDim.new(0, SLOT_PAD)
-layout.Parent         = container
+layout.Padding             = UDim.new(0, SLOT_PAD)
+layout.Parent              = container
 
 -- ── Slot builder ──────────────────────────────────────────────────────────────
 
@@ -91,6 +94,7 @@ end
 local function makeSlot(index, toolName)
     local frame = Instance.new("Frame")
     frame.Name                   = "Slot_" .. toolName
+    frame.LayoutOrder            = index
     frame.Size                   = UDim2.new(0, SLOT_W, 0, SLOT_H)
     frame.BackgroundColor3       = BG
     frame.BackgroundTransparency = 0.15
@@ -180,8 +184,8 @@ local function getTools()
             end
         end
     end
-    -- Laser always first, then alphabetical
-    local PRIORITY = { LaserGun = 0, Laser = 0, Beam = 1, Shield = 2 }
+    -- Explicit order: Laser=1, Beam=2, Shield=3
+    local PRIORITY = { LaserGun = 1, Laser = 1, Beam = 2, Shield = 3 }
     table.sort(tools, function(a, b)
         local pa = PRIORITY[a] or 99
         local pb = PRIORITY[b] or 99
@@ -227,39 +231,53 @@ local function updateHighlight()
 end
 
 -- ── Keyboard shortcuts (1-9) ──────────────────────────────────────────────────
+-- Use ContextActionService at high priority so we sink the input before
+-- Roblox's internal backpack handler (which steals key 1 even when the
+-- backpack CoreGui is disabled).
 
-local keyMap = {
-    [Enum.KeyCode.One]   = 1, [Enum.KeyCode.Two]   = 2, [Enum.KeyCode.Three] = 3,
-    [Enum.KeyCode.Four]  = 4, [Enum.KeyCode.Five]  = 5, [Enum.KeyCode.Six]   = 6,
-    [Enum.KeyCode.Seven] = 7, [Enum.KeyCode.Eight] = 8, [Enum.KeyCode.Nine]  = 9,
+local SLOT_KEYS = {
+    Enum.KeyCode.One, Enum.KeyCode.Two,   Enum.KeyCode.Three,
+    Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six,
+    Enum.KeyCode.Seven, Enum.KeyCode.Eight, Enum.KeyCode.Nine,
 }
 
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    local idx = keyMap[input.KeyCode]
-    if idx and slots[idx] then
-        equipTool(slots[idx].toolName)
-    end
-end)
+for i, keyCode in ipairs(SLOT_KEYS) do
+    ContextActionService:BindActionAtPriority(
+        "HotbarSlot" .. i,
+        function(_, state, _input)
+            if state == Enum.UserInputState.Begin then
+                if slots[i] then equipTool(slots[i].toolName) end
+            end
+            return Enum.ContextActionResult.Sink
+        end,
+        false,   -- no touch button
+        3000,    -- above Roblox's default backpack priority (~2000)
+        keyCode
+    )
+end
 
 -- ── Watch for backpack / character changes ────────────────────────────────────
 
 backpack.ChildAdded:Connect(rebuildHotbar)
 backpack.ChildRemoved:Connect(rebuildHotbar)
 
+local function wireCharacter(char)
+    char.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") then rebuildHotbar(); updateHighlight() end
+    end)
+    char.ChildRemoved:Connect(function(child)
+        if child:IsA("Tool") then rebuildHotbar(); updateHighlight() end
+    end)
+end
+
 player.CharacterAdded:Connect(function(char)
     task.wait(0.1)
     rebuildHotbar()
-    char.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") then updateHighlight() end
-    end)
-    char.ChildRemoved:Connect(function(child)
-        if child:IsA("Tool") then
-            rebuildHotbar()
-            updateHighlight()
-        end
-    end)
+    wireCharacter(char)
 end)
+
+-- Wire the already-loaded character (script starts after first spawn)
+if player.Character then wireCharacter(player.Character) end
 
 -- Poll highlight (cheap, runs every 0.1s)
 task.spawn(function()

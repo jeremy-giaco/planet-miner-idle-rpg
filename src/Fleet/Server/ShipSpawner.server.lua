@@ -1,6 +1,7 @@
 -- ServerScript → ServerScriptService
 -- Spawns a personal ship inside the hangar for each player.
 -- Animates hangar blast door on enter/exit.
+if not game:GetService("RunService"):IsServer() then return end
 
 local Players           = game:GetService("Players")
 local TweenService      = game:GetService("TweenService")
@@ -137,7 +138,7 @@ local function spawnShip(player)
     bb.Parent      = root
     local bbl = Instance.new("TextLabel")
     bbl.Size = UDim2.new(1,0,1,0); bbl.BackgroundTransparency = 1
-    bbl.Text = "▶ YOUR SHIP"; bbl.TextColor3 = ENG_COL
+    bbl.Text = "▶ SHIP"; bbl.TextColor3 = ENG_COL
     bbl.Font = Enum.Font.GothamBold; bbl.TextSize = 16
     bbl.Parent = bb
 

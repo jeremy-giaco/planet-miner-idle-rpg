@@ -1,5 +1,6 @@
 -- LocalScript → StarterGui/Sidebar
 -- Three independent popdown buttons at top of screen (right of Roblox buttons).
+if not game:GetService("RunService"):IsClient() then return end
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,6 +18,7 @@ local collectFragmentEvent = remotes:WaitForChild("CollectFragment")
 local collectMetalEvent    = remotes:WaitForChild("CollectMetal")
 local deductMetalEvent     = remotes:WaitForChild("DeductMetal")
 local loadSettings         = remotes:WaitForChild("LoadSettings")
+local loadInventory        = remotes:WaitForChild("LoadInventory")
 local saveSettings         = remotes:WaitForChild("SaveSettings")
 local ClientSettings       = require(ReplicatedStorage:WaitForChild("ClientSettings"))
 
@@ -48,21 +50,8 @@ sg.IgnoreGuiInset = true
 sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 sg.Parent = playerGui
 
--- ── Backdrop — invisible full-screen button; click anywhere to close popups ───
-
-local backdrop = Instance.new("TextButton")
-backdrop.Name                   = "Backdrop"
-backdrop.Size                   = UDim2.new(1, 0, 1, 0)
-backdrop.BackgroundTransparency = 1
-backdrop.Text                   = ""
-backdrop.BorderSizePixel        = 0
-backdrop.ZIndex                 = 5   -- below popups (ZIndex 20) and buttons (ZIndex 15)
-backdrop.Visible                = false
-backdrop.Parent                 = sg
-
 local function closeAll()
-    backdrop.Visible = false
-    -- allCloseFns populated later; call via shared table
+    -- close all panels (called when opening a new one)
 end
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
@@ -167,12 +156,6 @@ end
 local allCloseFns = {}
 local allTabBtns  = {}
 
-backdrop.MouseButton1Click:Connect(function()
-    for _, fn in ipairs(allCloseFns) do fn() end
-    for _, b  in ipairs(allTabBtns)  do b.TextColor3 = Color3.fromRGB(255,255,255) end
-    backdrop.Visible = false
-end)
-
 local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
     table.insert(allCloseFns, closeFn)
 
@@ -199,7 +182,8 @@ local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
         local pw = popup.Size.X.Offset
         local px = ax + bw/2 - pw/2
         local screenW = camera.ViewportSize.X
-        px = math.clamp(px, 4, screenW - pw - 4)
+        local clampMax = math.max(4, screenW - pw - 4)
+        px = math.clamp(px, 4, clampMax)
         popup.Position = UDim2.new(0, px, 0, BTN_H)
     end)
 
@@ -208,15 +192,14 @@ local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
     btn.MouseButton1Click:Connect(function()
         local opening = toggleFn()
         if opening then
+            -- Close other panels
             for _, fn in ipairs(allCloseFns) do
                 if fn ~= closeFn then fn() end
             end
             for _, b in ipairs(allTabBtns) do b.TextColor3 = Color3.fromRGB(255,255,255) end
-            btn.TextColor3  = Color3.fromRGB(255, 240, 100)
-            backdrop.Visible = true
+            btn.TextColor3 = Color3.fromRGB(255, 240, 100)
         else
-            btn.TextColor3   = Color3.fromRGB(255, 255, 255)
-            backdrop.Visible = false
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
     end)
 
@@ -531,6 +514,16 @@ loadSettings.OnClientEvent:Connect(function(settings)
     if isMobile and ClientSettings.controlMode=="classic" then
         ClientSettings.controlMode="twin-stick"
     end
+end)
+
+loadInventory.OnClientEvent:Connect(function(fragments, metals)
+    for k,v in pairs(fragments) do
+        if v and v > 0 then inventory.fragments[k] = v end
+    end
+    for k,v in pairs(metals) do
+        if v and v > 0 then inventory.metals[k] = v end
+    end
+    updateCargo()
 end)
 
 makeTabBtn("⚙","SETTINGS",3,settingsPopup,settingsToggle,settingsClose)

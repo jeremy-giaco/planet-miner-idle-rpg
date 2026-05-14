@@ -1,6 +1,7 @@
 -- LocalScript → place in StarterPlayerScripts, rename to "TurretClient"
-local Players           = game:GetService("Players")
 local RunService        = game:GetService("RunService")
+if not RunService:IsClient() then return end
+local Players           = game:GetService("Players")
 local UserInputService  = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 

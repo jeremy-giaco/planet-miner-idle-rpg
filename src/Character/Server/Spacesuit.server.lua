@@ -1,6 +1,9 @@
 -- ServerScript → ServerScriptService
 -- Applies default spacesuit colors via HumanoidDescription on character spawn.
 -- Client-side parts (visor, shoulder pads) are handled in Spacesuit.client.lua
+if not game:GetService("RunService"):IsServer() then return end
+if _G._SpacsuitActive then return end
+_G._SpacsuitActive = true
 
 local Players = game:GetService("Players")
 

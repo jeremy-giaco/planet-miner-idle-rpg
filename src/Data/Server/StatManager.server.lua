@@ -2,6 +2,9 @@
 -- Computes and applies player stats from base schema + equipment bonuses.
 -- Other systems read stats via _G.StatManager.get(player, statName).
 -- Wired for expansion: add new stats to DataSchema and modifiers here.
+if not game:GetService("RunService"):IsServer() then return end
+if _G._StatManagerActive then return end
+_G._StatManagerActive = true
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
