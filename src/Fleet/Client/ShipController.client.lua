@@ -588,7 +588,7 @@ RunService.Heartbeat:Connect(function(dt)
     if laserActive and laserTimer <= 0 and hitDebrisRemote then
         local mouse  = player:GetMouse()
         local camRay = workspace.CurrentCamera:ScreenPointToRay(mouse.X, mouse.Y)
-        local result = workspace:Raycast(camRay.Origin, camRay.Direction * LASER_RANGE, rayParams)
+        local result = workspace:Raycast(camRay.Origin, camRay.Direction * LASER_RANGE, debrisRayParams)
         if result then
             -- Visual: brief laser line
             local laserPart = Instance.new("Part")
