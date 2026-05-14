@@ -91,6 +91,7 @@ end
 -- ── Constants ─────────────────────────────────────────────────────────────────
 
 local CARGO_COLOR      = Color3.fromRGB(255, 255, 255)
+local CARGO_CAPACITY   = 50   -- items per trip before returning to base
 local ROVER_SPEED      = 60
 local GUN_RANGE        = 160
 local GUN_COOLDOWN     = 3
@@ -250,7 +251,7 @@ for i, cfg in ipairs(DRONE_CONFIGS) do
         pos            = homePos,
         state          = "idle",
         target         = nil,
-        cargo          = nil,
+        bags           = {},   -- list of { type, name } collected this trip
         fireCooldown   = math.random() * GUN_COOLDOWN,
         mode           = cfg.defaultMode,
         assignedPlayer = nil,
@@ -269,6 +270,10 @@ end
 local function setCargoLight(drone, on)
     if not drone.cargoLight or not drone.cargoLight.Parent then return end
     drone.cargoLight.Color = on and CARGO_COLOR or Color3.fromRGB(30, 35, 55)
+end
+
+local function cargoFull(drone)
+    return #drone.bags >= CARGO_CAPACITY
 end
 
 -- ── Debris damage + death + rebuild ──────────────────────────────────────────
@@ -346,7 +351,7 @@ local function createRebuildMarker(drone)
         drone.pos          = drone.homePos
         drone.state        = "idle"
         drone.target       = nil
-        drone.cargo        = nil
+        drone.bags         = {}
         drone.damageCooldown = 0
         addDroneHealthBar(drone)
         updateHealthBar(drone)
@@ -366,7 +371,7 @@ local function killDrone(drone)
         drone.target.claimed = false
         drone.target = nil
     end
-    drone.cargo  = nil
+    drone.bags   = {}
     drone.state  = "idle"
     -- Explosion flash
     if drone.model and drone.model.Parent then
@@ -457,33 +462,44 @@ end
 -- ── Deliver cargo ─────────────────────────────────────────────────────────────
 
 local function deliverCargo(drone)
-    local playerList = Players:GetPlayers()
-    if drone.cargo.type == "Fragment" then
-        for _, player in ipairs(playerList) do
-            collectFragmentEvent:FireClient(player, drone.cargo.name)
-        end
-    elseif drone.cargo.type == "Metal" then
-        for _, player in ipairs(playerList) do
-            collectMetalEvent:FireClient(player, drone.cargo.name)
-            addMetal(player, drone.cargo.name)
-        end
-    end
-    -- Update bin count display
+    if #drone.bags == 0 then return end
+    local playerList  = Players:GetPlayers()
     local storageRoom = workspace:FindFirstChild("StorageRoom")
-    if storageRoom and drone.cargo then
-        local bin = storageRoom:FindFirstChild("Bin_" .. drone.cargo.name)
-        if bin then
-            local count = (bin:GetAttribute("Count") or 0) + 1
-            bin:SetAttribute("Count", count)
-            local bb = bin:FindFirstChildOfClass("BillboardGui")
-            if bb then
-                local cl = bb:FindFirstChild("CountLabel")
-                if cl then cl.Text = "× " .. count end
+
+    -- Tally counts per resource name so we do one bin update each
+    local binDeltas = {}
+
+    for _, item in ipairs(drone.bags) do
+        if item.type == "Fragment" then
+            for _, player in ipairs(playerList) do
+                collectFragmentEvent:FireClient(player, item.name)
+            end
+        elseif item.type == "Metal" then
+            for _, player in ipairs(playerList) do
+                collectMetalEvent:FireClient(player, item.name)
+                addMetal(player, item.name)
+            end
+        end
+        binDeltas[item.name] = (binDeltas[item.name] or 0) + 1
+    end
+
+    -- Update bin count displays once per unique resource
+    if storageRoom then
+        for name, delta in pairs(binDeltas) do
+            local bin = storageRoom:FindFirstChild("Bin_" .. name)
+            if bin then
+                local count = (bin:GetAttribute("Count") or 0) + delta
+                bin:SetAttribute("Count", count)
+                local bb = bin:FindFirstChildOfClass("BillboardGui")
+                if bb then
+                    local cl = bb:FindFirstChild("CountLabel")
+                    if cl then cl.Text = "× " .. count end
+                end
             end
         end
     end
 
-    drone.cargo = nil
+    drone.bags = {}
     setCargoLight(drone, false)
 end
 
@@ -494,8 +510,8 @@ local function resetDrone(drone)
         drone.target.claimed = false
         drone.target = nil
     end
-    if drone.cargo then
-        drone.cargo = nil
+    if #drone.bags > 0 then
+        drone.bags = {}
         setCargoLight(drone, false)
     end
     drone.state = "idle"
@@ -600,17 +616,26 @@ RunService.Heartbeat:Connect(function(dt)
 
         elseif drone.mode == "scavenger" then
             if drone.state == "idle" then
-                local nearest, nearestDist = nil, math.huge
-                for _, c in ipairs(collectibles) do
-                    if not c.claimed and c.part and c.part.Parent then
-                        local d = (c.part.Position - drone.pos).Magnitude
-                        if d < nearestDist then nearestDist = d; nearest = c end
+                -- Full? Head home immediately
+                if cargoFull(drone) then
+                    drone.state = "flying_back"
+                else
+                    -- Find nearest unclaimed collectible
+                    local nearest, nearestDist = nil, math.huge
+                    for _, c in ipairs(collectibles) do
+                        if not c.claimed and c.part and c.part.Parent then
+                            local d = (c.part.Position - drone.pos).Magnitude
+                            if d < nearestDist then nearestDist = d; nearest = c end
+                        end
                     end
-                end
-                if nearest then
-                    nearest.claimed = true
-                    drone.target    = nearest
-                    drone.state     = "flying_out"
+                    if nearest then
+                        nearest.claimed = true
+                        drone.target    = nearest
+                        drone.state     = "flying_out"
+                    elseif #drone.bags > 0 then
+                        -- Nothing left to collect — deliver what we have
+                        drone.state = "flying_back"
+                    end
                 end
 
             elseif drone.state == "flying_out" then
@@ -623,7 +648,7 @@ RunService.Heartbeat:Connect(function(dt)
                 else
                     if nearDebris(drone.pos) then
                         drone.target.claimed = false
-                        drone.target = nil; drone.state = "flying_back"
+                        drone.target = nil; drone.state = "idle"
                     else
                         local arrived = moveDrone(drone, moonHoverPos(drone.target.part.Position), dt)
                         if arrived then drone.state = "collecting" end
@@ -633,17 +658,19 @@ RunService.Heartbeat:Connect(function(dt)
             elseif drone.state == "collecting" then
                 local c = drone.target
                 if c and c.part and c.part.Parent then
-                    drone.cargo = { type = c.type, name = c.name }
+                    table.insert(drone.bags, { type = c.type, name = c.name })
                     removeCollectible(c.part)
                     c.part:Destroy()
                     setCargoLight(drone, true)
                 end
-                drone.target = nil; drone.state = "flying_back"
+                drone.target = nil
+                -- Bag full → go home; otherwise grab more
+                drone.state = cargoFull(drone) and "flying_back" or "idle"
 
             elseif drone.state == "flying_back" then
                 local arrived = moveDrone(drone, drone.homePos, dt)
                 if arrived then
-                    if drone.cargo then deliverCargo(drone) end
+                    deliverCargo(drone)
                     drone.state = "idle"
                 end
             end
