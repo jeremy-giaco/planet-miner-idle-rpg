@@ -1,152 +1,153 @@
 {
-    "name": "planet-miner",
-    "tree": {
-        "$className": "DataModel",
-
-        "ReplicatedStorage": {
-            "Config": {
-                "$path": "src/Core/Config.lua"
-            },
-            "DataSchema": {
-                "$path": "src/Data/Shared/DataSchema.lua"
-            },
-            "VirtualJoystick": {
-                "$path": "src/UI/Shared/VirtualJoystick.lua"
-            },
-            "ClientSettings": {
-                "$path": "src/Core/ClientSettings.lua"
-            }
+  "name": "planet-miner",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Config": {
+        "$path": "src/Core/Config.lua"
+      },
+      "DataSchema": {
+        "$path": "src/Data/Shared/DataSchema.lua"
+      },
+      "VirtualJoystick": {
+        "$path": "src/UI/Shared/VirtualJoystick.lua"
+      },
+      "ClientSettings": {
+        "$path": "src/Core/ClientSettings.lua"
+      }
+    },
+    "ServerScriptService": {
+      "Remotes": {
+        "$path": "src/Core/Remotes.server.lua"
+      },
+      "DataStore": {
+        "$path": "src/Data/Server/DataStore.server.lua"
+      },
+      "StatManager": {
+        "$path": "src/Data/Server/StatManager.server.lua"
+      },
+      "GameSetup": {
+        "$path": "src/World/Server/GameSetup.server.lua"
+      },
+      "WorldGen": {
+        "$path": "src/World/Server/WorldGen.lua"
+      },
+      "DebrisSystem": {
+        "$path": "src/World/Server/DebrisSystem.server.lua"
+      },
+      "TurretSetup": {
+        "$path": "src/Base/Server/TurretSetup.server.lua"
+      },
+      "DroneManager": {
+        "$path": "src/Fleet/Server/DroneManager.server.lua"
+      },
+      "CoinSystem": {
+        "$path": "src/Economics/Server/CoinSystem.server.lua"
+      },
+      "SettingsHandler": {
+        "$path": "src/Data/Server/SettingsHandler.server.lua"
+      },
+      "Spacesuit": {
+        "$path": "src/Character/Server/Spacesuit.server.lua"
+      },
+      "ShipSpawner": {
+        "$path": "src/Fleet/Server/ShipSpawner.server.lua"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "ZoneDetector": {
+          "$path": "src/World/Client/ZoneDetector.client.lua"
         },
-
-        "ServerScriptService": {
-            "Remotes": {
-                "$path": "src/Core/Remotes.server.lua"
-            },
-            "DataStore": {
-                "$path": "src/Data/Server/DataStore.server.lua"
-            },
-            "StatManager": {
-                "$path": "src/Data/Server/StatManager.server.lua"
-            },
-            "GameSetup": {
-                "$path": "src/World/Server/GameSetup.server.lua"
-            },
-            "WorldGen": {
-                "$path": "src/World/Server/WorldGen.lua"
-            },
-            "DebrisSystem": {
-                "$path": "src/World/Server/DebrisSystem.server.lua"
-            },
-            "TurretSetup": {
-                "$path": "src/Base/Server/TurretSetup.server.lua"
-            },
-            "DroneManager": {
-                "$path": "src/Fleet/Server/DroneManager.server.lua"
-            },
-            "CoinSystem": {
-                "$path": "src/Economics/Server/CoinSystem.server.lua"
-            },
-            "SettingsHandler": {
-                "$path": "src/Data/Server/SettingsHandler.server.lua"
-            },
-            "Spacesuit": {
-                "$path": "src/Character/Server/Spacesuit.server.lua"
-            },
-            "ShipSpawner": {
-                "$path": "src/Fleet/Server/ShipSpawner.server.lua"
-            }
+        "ShipController": {
+          "$path": "src/Fleet/Client/ShipController.client.lua"
         },
-
-        "StarterPlayer": {
-            "$className": "StarterPlayer",
-            "StarterPlayerScripts": {
-                "$className": "StarterPlayerScripts",
-                "ZoneDetector": {
-                    "$path": "src/World/Client/ZoneDetector.client.lua"
-                },
-                "ShipController": {
-                    "$path": "src/Fleet/Client/ShipController.client.lua"
-                },
-                "TurretClient": {
-                    "$path": "src/Base/Client/TurretClient.client.lua"
-                }
-            },
-            "StarterCharacterScripts": {
-                "$className": "StarterCharacterScripts",
-                "MoonGravity": {
-                    "$path": "src/Character/Client/MoonGravity.client.lua"
-                },
-                "Jetpack": {
-                    "$path": "src/Character/Client/Jetpack.client.lua"
-                },
-                "Spacesuit": {
-                    "$path": "src/Character/Client/Spacesuit.client.lua"
-                },
-                "AutoEquip": {
-                    "$path": "src/Character/Client/AutoEquip.client.lua"
-                }
-            }
-        },
-
-        "StarterPack": {
-            "Laser": {
-                "$className": "Tool",
-                "$properties": {
-                    "ToolTip": "Laser",
-                    "RequiresHandle": true,
-                    "GripPos": [0, 0, -1]
-                },
-                "Handle": {
-                    "$className": "Part",
-                    "$properties": {
-                        "Size": [0.18, 0.22, 1.1],
-                        "Color": [0.12, 0.14, 0.22],
-                        "Material": "Metal",
-                        "CanCollide": false
-                    }
-                },
-                "LaserGun": {
-                    "$path": "src/Combat/Client/LaserGun.client.lua"
-                },
-                "GunModel": {
-                    "$path": "src/Combat/Client/LaserGunModel.client.lua"
-                }
-            },
-            "Shield": {
-                "$className": "Tool",
-                "$properties": {
-                    "ToolTip": "Shield",
-                    "RequiresHandle": false
-                },
-                "EnergyShield": {
-                    "$path": "src/Combat/Client/EnergyShield.client.lua"
-                }
-            },
-            "Beam": {
-                "$className": "Tool",
-                "$properties": {
-                    "ToolTip": "Beam",
-                    "RequiresHandle": false
-                },
-                "MiningBeam": {
-                    "$path": "src/Combat/Client/MiningBeam.client.lua"
-                }
-            }
-        },
-
-        "StarterGui": {
-            "DroneUI": {
-                "$path": "src/UI/HUD/DroneUI.client.lua"
-            },
-            "InventoryUI": {
-                "$path": "src/UI/HUD/InventoryUI.client.lua"
-            },
-            "SettingsMenu": {
-                "$path": "src/UI/Menus/SettingsMenu.client.lua"
-            },
-            "Hotbar": {
-                "$path": "src/UI/HUD/Hotbar.client.lua"
-            }
+        "TurretClient": {
+          "$path": "src/Base/Client/TurretClient.client.lua"
         }
+      },
+      "StarterCharacterScripts": {
+        "$className": "StarterCharacterScripts",
+        "MoonGravity": {
+          "$path": "src/Character/Client/MoonGravity.client.lua"
+        },
+        "Jetpack": {
+          "$path": "src/Character/Client/Jetpack.client.lua"
+        },
+        "Spacesuit": {
+          "$path": "src/Character/Client/Spacesuit.client.lua"
+        },
+        "AutoEquip": {
+          "$path": "src/Character/Client/AutoEquip.client.lua"
+        }
+      }
+    },
+    "StarterPack": {
+      "Laser": {
+        "$className": "Tool",
+        "$properties": {
+          "ToolTip": "Laser",
+          "RequiresHandle": true,
+          "GripPos": [
+            0,
+            0,
+            -1
+          ]
+        },
+        "Handle": {
+          "$className": "Part",
+          "$properties": {
+            "Size": [
+              0.18,
+              0.22,
+              1.1
+            ],
+            "Color": [
+              0.12,
+              0.14,
+              0.22
+            ],
+            "Material": "Metal",
+            "CanCollide": false
+          }
+        },
+        "LaserGun": {
+          "$path": "src/Combat/Client/LaserGun.client.lua"
+        },
+        "GunModel": {
+          "$path": "src/Combat/Client/LaserGunModel.client.lua"
+        }
+      },
+      "Shield": {
+        "$className": "Tool",
+        "$properties": {
+          "ToolTip": "Shield",
+          "RequiresHandle": false
+        },
+        "EnergyShield": {
+          "$path": "src/Combat/Client/EnergyShield.client.lua"
+        }
+      },
+      "Beam": {
+        "$className": "Tool",
+        "$properties": {
+          "ToolTip": "Beam",
+          "RequiresHandle": false
+        },
+        "MiningBeam": {
+          "$path": "src/Combat/Client/MiningBeam.client.lua"
+        }
+      }
+    },
+    "StarterGui": {
+      "Sidebar": {
+        "$path": "src/UI/HUD/Sidebar.client.lua"
+      },
+      "Hotbar": {
+        "$path": "src/UI/HUD/Hotbar.client.lua"
+      }
     }
+  }
 }
