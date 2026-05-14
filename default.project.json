@@ -52,6 +52,9 @@
       },
       "ShipSpawner": {
         "$path": "src/Fleet/Server/ShipSpawner.server.lua"
+      },
+      "LavaFloor": {
+        "$path": "src/World/Server/LavaFloor.server.lua"
       }
     },
     "StarterPlayer": {

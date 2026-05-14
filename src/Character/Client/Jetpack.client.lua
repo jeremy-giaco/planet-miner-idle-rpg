@@ -16,9 +16,11 @@ local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 local torso     = character:WaitForChild("UpperTorso")
 
-local THRUST        = 520    -- must exceed workspace.Gravity (196) to climb; 520 = strong lift
-local MAX_UP_SPEED  = 140   -- terminal ascent speed (studs/s)
-local JETPACK_DELAY = 0.3   -- seconds of held Space before jetpack fires (on ground)
+local THRUST          = 520    -- must exceed workspace.Gravity (196) to climb; 520 = strong lift
+local MAX_UP_SPEED    = 140   -- terminal ascent speed (studs/s)
+local JETPACK_DELAY   = 0.3   -- seconds of held Space before jetpack fires (on ground)
+local FORWARD_THRUST  = 580   -- horizontal boost while airborne and moving
+local MAX_HORIZ_SPEED = 120   -- max horizontal speed from jetpack (studs/s)
 
 -- ── Jetpack model ─────────────────────────────────────────────────────────────
 
@@ -157,6 +159,20 @@ RunService.Heartbeat:Connect(function(dt)
             if upSpeed < MAX_UP_SPEED then
                 local boost = math.min(THRUST * dt, MAX_UP_SPEED - upSpeed)
                 hrp.AssemblyLinearVelocity = vel + upDir * boost
+            end
+
+            -- Forward thrust: boost along move direction when airborne
+            local moveDir = humanoid.MoveDirection
+            local inAir   = humanoid.FloorMaterial == Enum.Material.Air
+            if inAir and moveDir.Magnitude > 0.1 then
+                -- Project move direction onto the horizontal plane (remove up component)
+                local horizDir = (moveDir - upDir * moveDir:Dot(upDir)).Unit
+                local horizVel = vel - upDir * vel:Dot(upDir)
+                local horizSpeed = horizVel:Dot(horizDir)
+                if horizSpeed < MAX_HORIZ_SPEED then
+                    local fwdBoost = math.min(FORWARD_THRUST * dt, MAX_HORIZ_SPEED - horizSpeed)
+                    hrp.AssemblyLinearVelocity = hrp.AssemblyLinearVelocity + horizDir * fwdBoost
+                end
             end
             if not thrusting then
                 thrusting = true
