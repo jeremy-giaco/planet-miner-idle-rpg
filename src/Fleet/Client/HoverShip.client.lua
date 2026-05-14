@@ -387,10 +387,9 @@ tool.Equipped:Connect(function()
     workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
     UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 
-    -- Resolve control mode: respect user setting, fall back to hardware detection
-    local mode = ClientSettings.controlMode or "classic"
-    useTwinStick = (mode == "twin-stick" or mode == "tap-to-fly" or mode == "gyro")
-        or (isMobile and mode == "classic")  -- auto-upgrade mobile if not explicitly set
+    -- Resolve control mode: on PC (keyboard present) always use classic mouse+keyboard.
+    -- Twin-stick joystick only activates on actual mobile hardware.
+    useTwinStick = isMobile
 
     if useTwinStick then
         -- Spawn virtual joystick over the game UI
