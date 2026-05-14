@@ -121,6 +121,19 @@ end
 local thrusting    = false
 local spaceHeld    = 0   -- seconds Space has been held this press
 
+-- Mobile jump button fires JumpRequest continuously while held.
+-- We use a short decay timer to treat it as a "held" state.
+local jumpRequestTimer = 0
+local JUMP_REQUEST_WINDOW = 0.15
+
+UserInputService.JumpRequest:Connect(function()
+    jumpRequestTimer = JUMP_REQUEST_WINDOW
+    if character:FindFirstChild("InShip") then return end
+    if humanoid.FloorMaterial ~= Enum.Material.Air then
+        humanoid.Jump = true
+    end
+end)
+
 -- Tap Space on ground → jump; hold Space → jetpack after JETPACK_DELAY
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
@@ -144,7 +157,8 @@ RunService.Heartbeat:Connect(function(dt)
         return
     end
 
-    local isThrustKey = UserInputService:IsKeyDown(Enum.KeyCode.Space)
+    jumpRequestTimer = math.max(0, jumpRequestTimer - dt)
+    local isThrustKey = UserInputService:IsKeyDown(Enum.KeyCode.Space) or jumpRequestTimer > 0
 
     if isThrustKey then
         spaceHeld = spaceHeld + dt
