@@ -1,14 +1,18 @@
 -- LocalScript → StarterCharacterScripts
--- Spherical gravity experiment: redirects gravity to always pull toward
--- PLANET_CENTER regardless of where on the sphere the player stands.
+-- Spherical gravity + movement experiment.
 --
--- Strategy: keep workspace.Gravity at its normal value so the Humanoid's
--- jump power math stays intact. Each frame we:
---   1. Cancel the global -Y gravity pull  (+Y * g * dt added to velocity)
---   2. Apply our own pull toward PLANET_CENTER  (-radial * g * dt)
--- Net result: gravity always points toward the planet center.
+-- Gravity: keep workspace.Gravity at its normal value so Humanoid jump power
+-- math stays intact. Each frame:
+--   1. Cancel the global -Y gravity pull
+--   2. Apply pull toward PLANET_CENTER
+-- Net: gravity always points toward planet center.
 --
--- BodyGyro keeps HRP upright relative to the surface normal (unchanged from before).
+-- Movement: WalkSpeed = 0 so Humanoid doesn't fight us. We read WASD and
+-- project the camera's direction onto the surface tangent plane, then apply
+-- that as tangential velocity directly. This fixes movement at the equator
+-- where world-XZ projection of camera direction would be near-zero.
+--
+-- BodyGyro: aligns HRP so character stands perpendicular to sphere surface.
 
 local RunService        = game:GetService("RunService")
 if not RunService:IsClient() then return end
@@ -19,12 +23,14 @@ local Config            = require(ReplicatedStorage:WaitForChild("Config"))
 
 local PLANET_CENTER = Config.PLANET_CENTER
 local PLANET_RADIUS = Config.PLANET_RADIUS
+local WALK_SPEED    = 48
+local RUN_SPEED     = 80     -- held Shift
 
 local character = script.Parent
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 
-humanoid.WalkSpeed  = 48
+humanoid.WalkSpeed  = 0      -- we drive movement manually
 humanoid.AutoRotate = false   -- BodyGyro owns all rotation
 
 -- ── BodyGyro — aligns HRP so its Y axis = surface normal ─────────────────────
@@ -85,6 +91,47 @@ RunService.Heartbeat:Connect(function(dt)
     fwd = fwd.Unit
 
     bodyGyro.CFrame = CFrame.lookAt(Vector3.zero, fwd, up)
+
+    -- ── Surface-tangent movement ───────────────────────────────────────────────
+    -- Read WASD, project camera axes onto the surface tangent plane, apply velocity.
+    if character:FindFirstChild("InShip") then return end
+
+    local w = UserInputService:IsKeyDown(Enum.KeyCode.W) and 1 or 0
+    local s = UserInputService:IsKeyDown(Enum.KeyCode.S) and 1 or 0
+    local a = UserInputService:IsKeyDown(Enum.KeyCode.A) and 1 or 0
+    local d = UserInputService:IsKeyDown(Enum.KeyCode.D) and 1 or 0
+    local shift = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
+        or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+
+    local speed = shift and RUN_SPEED or WALK_SPEED
+    local inputFwd   = w - s
+    local inputRight = d - a
+
+    local vel = hrp.AssemblyLinearVelocity
+    local radialVel = vel:Dot(up)       -- velocity component along surface normal (gravity/jump)
+
+    if inputFwd ~= 0 or inputRight ~= 0 then
+        -- Project camera axes onto the surface tangent plane
+        local cam      = workspace.CurrentCamera
+        local camLook  = cam.CFrame.LookVector
+        local camRight = cam.CFrame.RightVector
+
+        local surfFwd   = camLook  - camLook:Dot(up)  * up
+        local surfRight = camRight - camRight:Dot(up) * up
+
+        if surfFwd.Magnitude   > 0.01 then surfFwd   = surfFwd.Unit   end
+        if surfRight.Magnitude > 0.01 then surfRight = surfRight.Unit end
+
+        local moveDir = (surfFwd * inputFwd + surfRight * inputRight)
+        if moveDir.Magnitude > 1 then moveDir = moveDir.Unit end
+
+        -- Preserve radial (gravity + jump) velocity, replace tangential
+        hrp.AssemblyLinearVelocity = up * radialVel + moveDir * speed
+    else
+        -- No input: bleed off tangential velocity (friction-like damping)
+        local tangentVel = vel - up * radialVel
+        hrp.AssemblyLinearVelocity = up * radialVel + tangentVel * (1 - math.min(dt * 12, 1))
+    end
 end)
 
 -- ── Redirect Humanoid jump impulse ───────────────────────────────────────────
