@@ -45,7 +45,7 @@ local sidebarOpen = false
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Name                   = "SidebarToggle"
 toggleBtn.Size                   = UDim2.new(0, TAB_W, 0, TAB_H)
-toggleBtn.Position               = UDim2.new(0, 8, 0.5, -TAB_H / 2)
+toggleBtn.Position               = UDim2.new(0, 4, 0.5, -TAB_H / 2)
 toggleBtn.BackgroundColor3       = Color3.fromRGB(20, 15, 55)
 toggleBtn.BackgroundTransparency = 0.2
 toggleBtn.Text                   = "≡"
@@ -60,23 +60,23 @@ do local s = Instance.new("UIStroke"); s.Color = NEON; s.Thickness = 1.5; s.Pare
 
 -- ── Main panel ────────────────────────────────────────────────────────────────
 
-local PANEL_W = 270
+local PANEL_W = 150
 
 local panel = Instance.new("Frame")
 panel.Name                   = "SidebarPanel"
 panel.Size                   = UDim2.new(0, PANEL_W, 0.85, 0)
-panel.Position               = UDim2.new(0, -(PANEL_W + 20), 0.075, 0)
+panel.Position               = UDim2.new(0, -(PANEL_W + 10), 0.075, 0)
 panel.BackgroundColor3       = BG
-panel.BackgroundTransparency = 0.1
+panel.BackgroundTransparency = 0.45
 panel.BorderSizePixel        = 0
 panel.ClipsDescendants       = true
 panel.ZIndex                 = 11
 panel.Parent                 = sg
 Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
-do local s = Instance.new("UIStroke"); s.Color = NEON; s.Thickness = 1.5; s.Parent = panel end
+do local s = Instance.new("UIStroke"); s.Color = NEON; s.Thickness = 1; s.Parent = panel end
 
-local OPEN_POS  = UDim2.new(0, TAB_W + 16, 0.075, 0)
-local CLOSE_POS = UDim2.new(0, -(PANEL_W + 20), 0.075, 0)
+local OPEN_POS  = UDim2.new(0, 0, 0.075, 0)          -- flush with left edge, under toggle btn
+local CLOSE_POS = UDim2.new(0, -(PANEL_W + 10), 0.075, 0)
 local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
 toggleBtn.MouseButton1Click:Connect(function()
