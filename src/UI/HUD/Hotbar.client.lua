@@ -248,19 +248,23 @@ end)
 backpack.ChildAdded:Connect(rebuildHotbar)
 backpack.ChildRemoved:Connect(rebuildHotbar)
 
-player.CharacterAdded:Connect(function(char)
-    task.wait(0.1)
-    rebuildHotbar()
+local function wireCharacter(char)
     char.ChildAdded:Connect(function(child)
         if child:IsA("Tool") then rebuildHotbar(); updateHighlight() end
     end)
     char.ChildRemoved:Connect(function(child)
-        if child:IsA("Tool") then
-            rebuildHotbar()
-            updateHighlight()
-        end
+        if child:IsA("Tool") then rebuildHotbar(); updateHighlight() end
     end)
+end
+
+player.CharacterAdded:Connect(function(char)
+    task.wait(0.1)
+    rebuildHotbar()
+    wireCharacter(char)
 end)
+
+-- Wire the already-loaded character (script starts after first spawn)
+if player.Character then wireCharacter(player.Character) end
 
 -- Poll highlight (cheap, runs every 0.1s)
 task.spawn(function()
