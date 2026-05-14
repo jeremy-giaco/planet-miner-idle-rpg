@@ -218,9 +218,18 @@ local function update(dt)
 
     local pos = hrp.Position
     for _, chunk in ipairs(debrisFolder:GetChildren()) do
-        if chunk:IsA("BasePart") and chunk:GetAttribute("IsDebris") then
-            local contactDist = SHIELD_RADIUS + chunk.Size.X * 0.5
-            if (chunk.Position - pos).Magnitude < contactDist then
+        if not chunk:GetAttribute("IsDebris") then continue end
+        local chunkPos
+        if chunk:IsA("BasePart") then
+            chunkPos = chunk.Position
+        elseif chunk:IsA("Model") then
+            local pp = chunk.PrimaryPart or chunk:FindFirstChildOfClass("BasePart")
+            if pp then chunkPos = pp.Position end
+        end
+        if chunkPos then
+            local approxSize = chunk:IsA("BasePart") and chunk.Size.X or 4
+            local contactDist = SHIELD_RADIUS + approxSize * 0.5
+            if (chunkPos - pos).Magnitude < contactDist then
                 hitDebrisEvent:FireServer(chunk)
                 if not chunk.Anchored then
                     energy = math.max(0, energy - ENERGY_DRAIN)

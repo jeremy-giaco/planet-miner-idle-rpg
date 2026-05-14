@@ -50,7 +50,9 @@ local function buildBeam()
     beamOrigin = Instance.new("Part")
     beamOrigin.Size = Vector3.new(0.1, 0.1, 0.1)
     beamOrigin.Transparency = 1; beamOrigin.CanCollide = false
-    beamOrigin.Anchored = false; beamOrigin.Parent = character
+    beamOrigin.Anchored = false
+    beamOrigin.CFrame = torso.CFrame  -- must match before weld locks the offset
+    beamOrigin.Parent = character
     local weld = Instance.new("WeldConstraint")
     weld.Part0 = torso; weld.Part1 = beamOrigin; weld.Parent = beamOrigin
 
