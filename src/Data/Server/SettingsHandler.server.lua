@@ -5,9 +5,10 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local remotes       = ReplicatedStorage:WaitForChild("Remotes")
-local loadSettings  = remotes:WaitForChild("LoadSettings")
-local saveSettings  = remotes:WaitForChild("SaveSettings")
+local remotes         = ReplicatedStorage:WaitForChild("Remotes")
+local loadSettings    = remotes:WaitForChild("LoadSettings")
+local loadInventory   = remotes:WaitForChild("LoadInventory")
+local saveSettings    = remotes:WaitForChild("SaveSettings")
 
 local VALID_MODES = { classic = true, ["twin-stick"] = true, ["tap-to-fly"] = true, gyro = true }
 
@@ -15,8 +16,9 @@ Players.PlayerAdded:Connect(function(player)
     -- Wait for DataStore to populate, then send settings to client
     task.wait(1)
     local data = _G.PlayerData and _G.PlayerData.get(player)
-    if data and data.settings then
-        loadSettings:FireClient(player, data.settings)
+    if data then
+        if data.settings  then loadSettings:FireClient(player, data.settings) end
+        loadInventory:FireClient(player, data.fragments or {}, data.metals or {})
     end
 end)
 

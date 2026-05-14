@@ -17,6 +17,7 @@ local collectFragmentEvent = remotes:WaitForChild("CollectFragment")
 local collectMetalEvent    = remotes:WaitForChild("CollectMetal")
 local deductMetalEvent     = remotes:WaitForChild("DeductMetal")
 local loadSettings         = remotes:WaitForChild("LoadSettings")
+local loadInventory        = remotes:WaitForChild("LoadInventory")
 local saveSettings         = remotes:WaitForChild("SaveSettings")
 local ClientSettings       = require(ReplicatedStorage:WaitForChild("ClientSettings"))
 
@@ -531,6 +532,16 @@ loadSettings.OnClientEvent:Connect(function(settings)
     if isMobile and ClientSettings.controlMode=="classic" then
         ClientSettings.controlMode="twin-stick"
     end
+end)
+
+loadInventory.OnClientEvent:Connect(function(fragments, metals)
+    for k,v in pairs(fragments) do
+        if v and v > 0 then inventory.fragments[k] = v end
+    end
+    for k,v in pairs(metals) do
+        if v and v > 0 then inventory.metals[k] = v end
+    end
+    updateCargo()
 end)
 
 makeTabBtn("⚙","SETTINGS",3,settingsPopup,settingsToggle,settingsClose)
