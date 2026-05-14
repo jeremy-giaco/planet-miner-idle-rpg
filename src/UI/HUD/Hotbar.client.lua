@@ -52,11 +52,12 @@ container.Size                   = UDim2.new(0, 1, 0, SLOT_H)  -- resized dynami
 container.Parent                 = sg
 
 local layout = Instance.new("UIListLayout")
-layout.FillDirection  = Enum.FillDirection.Horizontal
+layout.FillDirection       = Enum.FillDirection.Horizontal
+layout.SortOrder           = Enum.SortOrder.LayoutOrder
 layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 layout.VerticalAlignment   = Enum.VerticalAlignment.Center
-layout.Padding        = UDim.new(0, SLOT_PAD)
-layout.Parent         = container
+layout.Padding             = UDim.new(0, SLOT_PAD)
+layout.Parent              = container
 
 -- ── Slot builder ──────────────────────────────────────────────────────────────
 
