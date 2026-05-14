@@ -70,6 +70,14 @@ local beamEndAnchor    = nil
 local beamActive       = false
 local beamTimer        = 0
 local fireTimer        = 0
+local laserActive      = false
+local laserTimer       = 0
+local LASER_COOLDOWN   = 0.25
+local LASER_RANGE      = 6000
+local LASER_COLOR      = Color3.fromRGB(255, 30, 30)
+local shieldActive     = false
+local shieldPart       = nil
+local SHIELD_COL       = Color3.fromRGB(80, 200, 255)
 local hitDebrisRemote
 local sticks           = nil
 local useTwinStick     = false
@@ -318,17 +326,29 @@ local function enterShip()
                 camDist = math.clamp(camDist - input.Position.Z * 4, 0, 80)
             end
         end)
-        -- Beam LMB
+        -- LMB fires based on equipped tool: Beam = mining beam, Laser = ship laser
+        local function equippedToolName()
+            if not character then return nil end
+            local t = character:FindFirstChildOfClass("Tool")
+            return t and t.Name or nil
+        end
         local beamDownConn, beamUpConn
         beamDownConn = UserInputService.InputBegan:Connect(function(input, gpe)
             if gpe then return end
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                beamActive = true; beamTimer = 0
+                local tool = equippedToolName()
+                if tool == "Beam" then
+                    beamActive = true; beamTimer = 0
+                elseif tool == "Laser" or tool == "LaserGun" then
+                    laserActive = true; laserTimer = 0
+                elseif tool == "Shield" then
+                    shieldActive = true
+                end
             end
         end)
         beamUpConn = UserInputService.InputEnded:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                beamActive = false
+                beamActive = false; laserActive = false; shieldActive = false
             end
         end)
         table.insert(shipObjects, beamDownConn)
@@ -402,7 +422,9 @@ local function exitShip()
     local prompt = shipRoot:FindFirstChildOfClass("ProximityPrompt")
     if prompt then prompt.Enabled = true; prompt.ActionText = "Enter Ship" end
 
-    beamActive = false; rightMouseHeld = false; lockedAimPos = nil
+    beamActive = false; laserActive = false; shieldActive = false
+    rightMouseHeld = false; lockedAimPos = nil
+    if shieldPart then shieldPart:Destroy(); shieldPart = nil end
     destroyShipVisual()
 
     -- Reset ship state
@@ -558,6 +580,53 @@ RunService.Heartbeat:Connect(function(dt)
         end
     elseif beamObj then
         beamObj.Enabled = false
+    end
+
+    -- ── Ship laser (Laser tool equipped) ─────────────────────────────────────
+    laserTimer = laserTimer - dt
+    if laserActive and laserTimer <= 0 and hitDebrisRemote then
+        local mouse  = player:GetMouse()
+        local camRay = workspace.CurrentCamera:ScreenPointToRay(mouse.X, mouse.Y)
+        local result = workspace:Raycast(camRay.Origin, camRay.Direction * LASER_RANGE, rayParams)
+        if result then
+            -- Visual: brief laser line
+            local laserPart = Instance.new("Part")
+            laserPart.Anchored = true; laserPart.CanCollide = false; laserPart.CastShadow = false
+            laserPart.Size = Vector3.new(0.18, 0.18, (result.Position - newPos2).Magnitude)
+            laserPart.CFrame = CFrame.lookAt(newPos2, result.Position) * CFrame.new(0, 0, -laserPart.Size.Z/2)
+            laserPart.Color = LASER_COLOR; laserPart.Material = Enum.Material.Neon
+            laserPart.Parent = workspace
+            local pl = Instance.new("PointLight"); pl.Color = LASER_COLOR; pl.Brightness = 4; pl.Range = 20; pl.Parent = laserPart
+            game:GetService("Debris"):AddItem(laserPart, 0.07)
+            -- Damage debris
+            local inst = result.Instance
+            while inst and not inst:GetAttribute("IsDebris") do inst = inst.Parent end
+            if inst and inst:GetAttribute("IsDebris") then
+                hitDebrisRemote:FireServer(inst)
+            end
+        end
+        laserTimer = LASER_COOLDOWN
+    end
+
+    -- ── Energy shield (Shield tool equipped, LMB held) ────────────────────────
+    if shieldActive then
+        if not shieldPart then
+            shieldPart = Instance.new("Part")
+            shieldPart.Shape       = Enum.PartType.Ball
+            shieldPart.Size        = Vector3.new(13, 13, 13)
+            shieldPart.Anchored    = true
+            shieldPart.CanCollide  = false
+            shieldPart.CastShadow  = false
+            shieldPart.Color       = SHIELD_COL
+            shieldPart.Material    = Enum.Material.Neon
+            shieldPart.Transparency = 0.55
+            shieldPart.Parent      = workspace
+            local sl = Instance.new("PointLight")
+            sl.Color = SHIELD_COL; sl.Brightness = 3; sl.Range = 35; sl.Parent = shieldPart
+        end
+        shieldPart.CFrame = CFrame.new(newPos2)
+    elseif shieldPart then
+        shieldPart:Destroy(); shieldPart = nil
     end
 
     -- ── Camera ────────────────────────────────────────────────────────────────
