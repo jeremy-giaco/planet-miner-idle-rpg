@@ -1,12 +1,12 @@
 -- World/Server/LavaFloor.server.lua
--- Flat ring surface at Y=10 (sphere equator), extending outward like Saturn's rings.
--- The planet sphere (radius 1019, center Y=0) pokes up through the ring naturally.
--- Players falling off the north pole surface (Y≈1019) land on the ring.
+-- Thin flat discs centered at Y=0 (sphere equator, radius=1019).
+-- The planet sphere (opaque ball) hides the center of each disc,
+-- leaving only the outer ring visible — Saturn rings effect.
 --
--- Zones (by XZ radius from planet center):
---   Ring surface  (r = 1019 – 2800) : safe, flat, walkable
---   Danger band   (r = 2800 – 3400) : slow burn 5 HP/s
---   Death zone    (r > 3400)        : instant kill
+-- Disc stack (each slightly below the last so outer bands peek out):
+--   Ring surface  Y= 0  r=2800  dark basalt — safe walkable
+--   Danger band   Y=-5  r=3400  cracked lava — 5 HP/s burn
+--   Death zone    Y=-10 r=4200  molten lava  — instant kill
 
 if not game:GetService("RunService"):IsServer() then return end
 if _G._LavaFloorActive then return end
@@ -19,47 +19,39 @@ local TweenService      = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 
-local PC            = Config.PLANET_CENTER   -- (0, 0, 0)
-local RING_Y        = 10
-local RING_THICK    = 20    -- slab thickness
+local PC = Config.PLANET_CENTER   -- (0, 0, 0)
 
-local SAFE_OUTER    = 2800
-local DANGER_OUTER  = 3400
-local DEATH_OUTER   = 4200
+local SAFE_OUTER   = 2800
+local DANGER_OUTER = 3400
+local DEATH_OUTER  = 4200
+local SLAB_THICK   = 6
 
--- ── Ring surface slab (safe walkable area) ────────────────────────────────────
+local function makeSlab(y, radius, color, material)
+    local p = Instance.new("Part")
+    p.Shape      = Enum.PartType.Cylinder
+    p.Size       = Vector3.new(SLAB_THICK, radius * 2, radius * 2)
+    p.CFrame     = CFrame.new(PC.X, y, PC.Z) * CFrame.Angles(0, 0, math.rad(90))
+    p.Anchored   = true
+    p.CanCollide = true
+    p.CastShadow = false
+    p.Material   = material
+    p.Color      = color
+    p.Parent     = workspace
+    return p
+end
 
-local ring = Instance.new("Part")
-ring.Name        = "RingSurface"
-ring.Shape       = Enum.PartType.Cylinder
-ring.Size        = Vector3.new(RING_THICK, SAFE_OUTER * 2, SAFE_OUTER * 2)
-ring.CFrame      = CFrame.new(PC.X, RING_Y, PC.Z) * CFrame.Angles(0, 0, math.rad(90))
-ring.Anchored    = true
-ring.CanCollide  = true
-ring.CastShadow  = false
-ring.Material    = Enum.Material.Basalt
-ring.Color       = Color3.fromRGB(35, 30, 28)
-ring.Parent      = workspace
+-- ── Safe ring ─────────────────────────────────────────────────────────────────
+
+local ring = makeSlab(0, SAFE_OUTER, Color3.fromRGB(35, 28, 25), Enum.Material.Basalt)
+ring.Name = "RingSurface"
 
 -- ── Danger band ───────────────────────────────────────────────────────────────
 
-local danger = Instance.new("Part")
-danger.Name        = "DangerBand"
-danger.Shape       = Enum.PartType.Cylinder
-danger.Size        = Vector3.new(RING_THICK - 2, DANGER_OUTER * 2, DANGER_OUTER * 2)
-danger.CFrame      = CFrame.new(PC.X, RING_Y - 1, PC.Z) * CFrame.Angles(0, 0, math.rad(90))
-danger.Anchored    = true
-danger.CanCollide  = true
-danger.CastShadow  = false
-danger.Material    = Enum.Material.Neon
-danger.Color       = Color3.fromRGB(180, 40, 5)
-danger.Parent      = workspace
+local danger = makeSlab(-5, DANGER_OUTER, Color3.fromRGB(180, 40, 5), Enum.Material.Neon)
+danger.Name = "DangerBand"
 
-local dangerLight = Instance.new("PointLight")
-dangerLight.Brightness = 1.5
-dangerLight.Range      = 80
-dangerLight.Color      = Color3.fromRGB(220, 70, 10)
-dangerLight.Parent     = danger
+local dl = Instance.new("PointLight")
+dl.Brightness = 1.5; dl.Range = 80; dl.Color = Color3.fromRGB(220, 70, 10); dl.Parent = danger
 
 task.spawn(function()
     while danger.Parent do
@@ -74,23 +66,11 @@ end)
 
 -- ── Death zone ────────────────────────────────────────────────────────────────
 
-local death = Instance.new("Part")
-death.Name        = "DeathZone"
-death.Shape       = Enum.PartType.Cylinder
-death.Size        = Vector3.new(RING_THICK - 4, DEATH_OUTER * 2, DEATH_OUTER * 2)
-death.CFrame      = CFrame.new(PC.X, RING_Y - 2, PC.Z) * CFrame.Angles(0, 0, math.rad(90))
-death.Anchored    = true
-death.CanCollide  = true
-death.CastShadow  = false
-death.Material    = Enum.Material.Neon
-death.Color       = Color3.fromRGB(255, 85, 10)
-death.Parent      = workspace
+local death = makeSlab(-10, DEATH_OUTER, Color3.fromRGB(255, 85, 10), Enum.Material.Neon)
+death.Name = "DeathZone"
 
-local deathLight = Instance.new("PointLight")
-deathLight.Brightness = 3
-deathLight.Range      = 140
-deathLight.Color      = Color3.fromRGB(255, 130, 20)
-deathLight.Parent     = death
+local deathL = Instance.new("PointLight")
+deathL.Brightness = 3; deathL.Range = 140; deathL.Color = Color3.fromRGB(255, 130, 20); deathL.Parent = death
 
 task.spawn(function()
     while death.Parent do
@@ -103,48 +83,35 @@ task.spawn(function()
     end
 end)
 
--- ── Warning sign at safe zone edge ───────────────────────────────────────────
+-- ── Warning sign ──────────────────────────────────────────────────────────────
 
 local sign = Instance.new("Part")
-sign.Name        = "LavaSign"
-sign.Size        = Vector3.new(0.3, 6, 14)
-sign.CFrame      = CFrame.new(PC.X + SAFE_OUTER - 40, RING_Y + 13, PC.Z)
-sign.Anchored    = true
-sign.CanCollide  = true
-sign.CastShadow  = false
-sign.Material    = Enum.Material.SmoothPlastic
-sign.Color       = Color3.fromRGB(30, 20, 15)
-sign.Parent      = workspace
+sign.Name     = "LavaSign"
+sign.Size     = Vector3.new(0.3, 8, 16)
+sign.CFrame   = CFrame.new(PC.X + SAFE_OUTER - 40, 10, PC.Z)
+sign.Anchored = true; sign.CanCollide = true; sign.CastShadow = false
+sign.Material = Enum.Material.SmoothPlastic
+sign.Color    = Color3.fromRGB(30, 20, 15)
+sign.Parent   = workspace
 
 local bb = Instance.new("BillboardGui")
-bb.Size        = UDim2.new(0, 340, 0, 100)
-bb.StudsOffset = Vector3.new(0, 4, 0)
-bb.AlwaysOnTop = false
-bb.MaxDistance = 200
-bb.Parent      = sign
+bb.Size = UDim2.new(0, 340, 0, 100); bb.StudsOffset = Vector3.new(0, 6, 0)
+bb.AlwaysOnTop = false; bb.MaxDistance = 300; bb.Parent = sign
 
-local line1 = Instance.new("TextLabel")
-line1.Text                   = "⚠  LAVA LAKE OF DEATH  ⚠"
-line1.Size                   = UDim2.new(1, 0, 0.5, 0)
-line1.BackgroundTransparency = 1
-line1.TextColor3             = Color3.fromRGB(255, 80, 10)
-line1.TextSize               = 22
-line1.Font                   = Enum.Font.GothamBold
-line1.TextStrokeColor3       = Color3.new(0, 0, 0)
-line1.TextStrokeTransparency = 0.3
-line1.Parent                 = bb
+local l1 = Instance.new("TextLabel")
+l1.Text = "⚠  LAVA LAKE OF DEATH  ⚠"; l1.Size = UDim2.new(1,0,0.5,0)
+l1.BackgroundTransparency = 1; l1.TextColor3 = Color3.fromRGB(255, 80, 10)
+l1.TextSize = 22; l1.Font = Enum.Font.GothamBold
+l1.TextStrokeColor3 = Color3.new(0,0,0); l1.TextStrokeTransparency = 0.3
+l1.Parent = bb
 
-local line2 = Instance.new("TextLabel")
-line2.Text                   = "No lifeguard on duty"
-line2.Size                   = UDim2.new(1, 0, 0.5, 0)
-line2.Position               = UDim2.new(0, 0, 0.5, 0)
-line2.BackgroundTransparency = 1
-line2.TextColor3             = Color3.fromRGB(220, 200, 180)
-line2.TextSize               = 16
-line2.Font                   = Enum.Font.GothamBold
-line2.TextStrokeColor3       = Color3.new(0, 0, 0)
-line2.TextStrokeTransparency = 0.4
-line2.Parent                 = bb
+local l2 = Instance.new("TextLabel")
+l2.Text = "No lifeguard on duty"; l2.Size = UDim2.new(1,0,0.5,0)
+l2.Position = UDim2.new(0,0,0.5,0); l2.BackgroundTransparency = 1
+l2.TextColor3 = Color3.fromRGB(220, 200, 180); l2.TextSize = 16
+l2.Font = Enum.Font.GothamBold
+l2.TextStrokeColor3 = Color3.new(0,0,0); l2.TextStrokeTransparency = 0.4
+l2.Parent = bb
 
 -- ── Damage loop ───────────────────────────────────────────────────────────────
 
@@ -164,7 +131,6 @@ RunService.Heartbeat:Connect(function(dt)
 
         if xzR <= SAFE_OUTER then
             burnAccum[player] = 0
-
         elseif xzR <= DANGER_OUTER then
             burnAccum[player] = (burnAccum[player] or 0) + 5 * dt
             if burnAccum[player] >= 1 then
@@ -172,7 +138,6 @@ RunService.Heartbeat:Connect(function(dt)
                 burnAccum[player] = burnAccum[player] - dmg
                 humanoid.Health = math.max(0, humanoid.Health - dmg)
             end
-
         else
             if not recentlyKilled[player] then
                 recentlyKilled[player] = true
@@ -188,4 +153,4 @@ Players.PlayerRemoving:Connect(function(player)
     burnAccum[player]      = nil
 end)
 
-print("[LavaFloor] Saturn ring surface active at Y=" .. RING_Y)
+print("[LavaFloor] Saturn ring surface active")
