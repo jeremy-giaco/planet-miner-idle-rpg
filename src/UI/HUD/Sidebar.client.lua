@@ -30,18 +30,22 @@ local TEXT  = Color3.fromRGB(220, 210, 255)
 local DIM   = Color3.fromRGB(150, 135, 185)
 local SEL   = Color3.fromRGB(90, 55, 200)
 local UNSEL = Color3.fromRGB(30, 22, 65)
-local ALPHA = 0.55
+local ALPHA = 0.0   -- fully opaque — buttons need to be clearly visible
 
-local ROW_H   = 26
-local BTN_H   = 36
-local POPUP_W = 175
--- Roblox's home + chat buttons occupy ~108px at top-left
-local ROBLOX_RESERVED = 108
+local ROW_H          = 26
+local BTN_H          = 36
+local POPUP_W        = 175   -- default popup width; settings overrides to wider
+local SETTINGS_POP_W = 240   -- extra width so 4 control buttons aren't cramped
+-- Roblox's home + chat buttons; IgnoreGuiInset=true so we share the same top bar.
+-- On most phones the Roblox buttons are ~36px tall and ~180px wide (home+chat+backpack).
+local ROBLOX_RESERVED = 196
 
 -- ── Screen GUI ────────────────────────────────────────────────────────────────
 
 local sg = Instance.new("ScreenGui")
-sg.Name = "Sidebar"; sg.ResetOnSpawn = false; sg.Parent = playerGui
+sg.Name = "Sidebar"; sg.ResetOnSpawn = false
+sg.IgnoreGuiInset = true   -- puts Y=0 at absolute screen top, same level as Roblox buttons
+sg.Parent = playerGui
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -123,14 +127,16 @@ local function makePopup(contentHeight)
 
     local function toggle()
         isOpen = not isOpen
+        local w = popup.Size.X.Offset
         TweenService:Create(popup, isOpen and twOpen or twClose,
-            { Size = UDim2.new(0, POPUP_W, 0, isOpen and openH or 0) }):Play()
+            { Size = UDim2.new(0, w, 0, isOpen and openH or 0) }):Play()
         return isOpen
     end
 
     local function close()
         if isOpen then isOpen = false
-            TweenService:Create(popup, twClose, { Size = UDim2.new(0, POPUP_W, 0, 0) }):Play()
+            local w = popup.Size.X.Offset
+            TweenService:Create(popup, twClose, { Size = UDim2.new(0, w, 0, 0) }):Play()
         end
     end
 
@@ -160,15 +166,14 @@ local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
     corner(btn, 0)
     stroke(btn, NEON, 0.5)
 
-    -- Set popup X position after layout resolves
+    -- Set popup X position after layout resolves (use popup's own width for centering)
     task.defer(function()
         local ax = btn.AbsolutePosition.X
         local bw = btn.AbsoluteSize.X
-        local px = ax + bw/2 - POPUP_W/2
-        -- Clamp so popup doesn't go off right edge
-        local screenW = sg.AbsoluteSize.X ~= 0 and sg.AbsoluteSize.X
-            or camera.ViewportSize.X
-        px = math.clamp(px, 4, screenW - POPUP_W - 4)
+        local pw = popup.Size.X.Offset
+        local px = ax + bw/2 - pw/2
+        local screenW = camera.ViewportSize.X
+        px = math.clamp(px, 4, screenW - pw - 4)
         popup.Position = UDim2.new(0, px, 0, BTN_H)
     end)
 
@@ -394,6 +399,7 @@ local cargoTabBtn = makeTabBtn("📦","CARGO",2,cargoPopup,cargoToggle,cargoClos
 
 -- Control mode (4 opts) + invert Y + optional gyro ≈ 180px
 local settingsPopup, settingsScroll, settingsToggle, settingsClose = makePopup(185)
+settingsPopup.Size = UDim2.new(0, SETTINGS_POP_W, 0, 0)   -- wider for 4 control buttons
 
 local function oRow(options, currentKey, order, onSelect)
     local c=Instance.new("Frame")
