@@ -127,11 +127,8 @@ local jumpRequestTimer = 0
 local JUMP_REQUEST_WINDOW = 0.15
 
 UserInputService.JumpRequest:Connect(function()
+    -- Just track held state — Roblox handles the actual jump from JumpRequest internally
     jumpRequestTimer = JUMP_REQUEST_WINDOW
-    if character:FindFirstChild("InShip") then return end
-    if humanoid.FloorMaterial ~= Enum.Material.Air then
-        humanoid.Jump = true
-    end
 end)
 
 -- Tap Space on ground → jump; hold Space → jetpack after JETPACK_DELAY
