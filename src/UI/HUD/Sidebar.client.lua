@@ -175,8 +175,9 @@ local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
     btn.ZIndex = 15
     btn.Parent = btnBar
 
-    -- Set popup X position after layout resolves (use popup's own width for centering)
-    task.defer(function()
+    table.insert(allTabBtns, btn)
+
+    local function repositionPopup()
         local ax = btn.AbsolutePosition.X
         local bw = btn.AbsoluteSize.X
         local pw = popup.Size.X.Offset
@@ -185,11 +186,10 @@ local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
         local clampMax = math.max(4, screenW - pw - 4)
         px = math.clamp(px, 4, clampMax)
         popup.Position = UDim2.new(0, px, 0, BTN_H)
-    end)
-
-    table.insert(allTabBtns, btn)
+    end
 
     btn.MouseButton1Click:Connect(function()
+        repositionPopup()
         local opening = toggleFn()
         if opening then
             -- Close other panels

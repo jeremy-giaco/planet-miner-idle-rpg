@@ -473,11 +473,13 @@ local function deliverCargo(drone)
         if item.type == "Fragment" then
             for _, player in ipairs(playerList) do
                 collectFragmentEvent:FireClient(player, item.name)
+                if _G.PlayerData then _G.PlayerData.addFragment(player, item.name) end
             end
         elseif item.type == "Metal" then
             for _, player in ipairs(playerList) do
                 collectMetalEvent:FireClient(player, item.name)
-                addMetal(player, item.name)
+                addMetal(player, item.name)  -- local cache for rebuild system
+                if _G.PlayerData then _G.PlayerData.addMetal(player, item.name) end
             end
         end
         binDeltas[item.name] = (binDeltas[item.name] or 0) + 1
