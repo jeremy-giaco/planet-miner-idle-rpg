@@ -282,9 +282,10 @@ local function enterShip()
     workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
     UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 
-    -- Resolve control mode: on PC (keyboard present) always use classic mouse+keyboard.
-    -- Twin-stick joystick only activates on actual mobile hardware.
-    useTwinStick = isMobile
+    -- Resolve control mode from settings; default to "classic" on PC, twin-stick on mobile.
+    local mode = ClientSettings.controlMode or (isMobile and "twin-stick" or "classic")
+    useTwinStick = (mode == "twin-stick" or mode == "tap-to-fly" or mode == "gyro")
+        or (isMobile and mode == "classic")
 
     -- Remotes
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
