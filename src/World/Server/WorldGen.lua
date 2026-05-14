@@ -149,23 +149,23 @@ function WorldGen.buildBase(cfg)
         Vector3.new(BX, BY + dh + 1, BZ + D/2), col.neon, Enum.Material.Neon, false)
     addLight(ds, col.neon, 1, 14)
 
-    -- ── Interior ceiling neon strips (5 rows, brighter) ─────────────────────
+    -- ── Interior ceiling neon strips (5 rows) ────────────────────────────────
     local stripOffsets = { -D*0.4, -D*0.15, 0, D*0.15, D*0.4 }
     for _, zo in ipairs(stripOffsets) do
         local strip = part(Vector3.new(W - 8, 0.3, 0.6),
             Vector3.new(BX, BY + H + 0.3, BZ + zo), col.neon, Enum.Material.Neon, false)
-        addLight(strip, col.neon, 5, 60)
+        addLight(strip, col.neon, 2.5, 45)
     end
 
-    -- ── Wall sconces (mid-height on east/west walls, brighter) ───────────────
+    -- ── Wall sconces (mid-height on east/west walls) ──────────────────────────
     local sconceOffsets = { -D/3, 0, D/3 }
     for _, zo in ipairs(sconceOffsets) do
         local se = part(Vector3.new(0.3, 0.8, 1.8),
             Vector3.new(BX + W/2 - 0.3, BY + H * 0.5, BZ + zo), col.neon, Enum.Material.Neon, false)
-        addLight(se, col.neon, 3.5, 40)
+        addLight(se, col.neon, 2, 30)
         local sw = part(Vector3.new(0.3, 0.8, 1.8),
             Vector3.new(BX - W/2 + 0.3, BY + H * 0.5, BZ + zo), col.neon, Enum.Material.Neon, false)
-        addLight(sw, col.neon, 3.5, 40)
+        addLight(sw, col.neon, 2, 30)
     end
 
     -- ── Roof neon trim ────────────────────────────────────────────────────────
@@ -465,12 +465,12 @@ function WorldGen.buildStorageRoom(cfg)
     local rz = BZ                 -- 0
     local ry = BY                 -- 1019
 
-    -- Colors: bright whites and warm neon
-    local WALL_COL  = Color3.fromRGB(195, 200, 215)
-    local FLOOR_COL = Color3.fromRGB(210, 212, 225)
-    local CEIL_COL  = Color3.fromRGB(235, 238, 248)
-    local WARM_NEON = Color3.fromRGB(255, 235, 160)  -- warm white/gold ceiling strips
-    local WARM_LITE = Color3.fromRGB(255, 245, 210)  -- point light color
+    -- Colors: match main base palette
+    local WALL_COL  = col.hull
+    local FLOOR_COL = col.panel
+    local CEIL_COL  = col.hull
+    local WARM_NEON = col.neon
+    local WARM_LITE = col.neon
 
     local folder = Instance.new("Folder")
     folder.Name = "StorageRoom"; folder.Parent = workspace
@@ -537,13 +537,13 @@ function WorldGen.buildStorageRoom(cfg)
     for _, lx in ipairs(lightX) do
         for _, lz in ipairs(lightZ) do
             local panel = sp(Vector3.new(14, 0.35, 0.7), lx, ry+RH+0.4, lz, WARM_NEON, Enum.Material.Neon, 0, false)
-            sl(panel, WARM_LITE, 8, 55)
+            sl(panel, WARM_LITE, 2.5, 45)
         end
     end
     -- Extra fill lights near floor on north/south walls
     for _, lz in ipairs({ rz-RD/2+1, rz+RD/2-1 }) do
         local sconce = sp(Vector3.new(0.35, 1, 2), rx, ry+5, lz, WARM_NEON, Enum.Material.Neon, 0, false)
-        sl(sconce, WARM_LITE, 3, 30)
+        sl(sconce, WARM_LITE, 2, 28)
     end
 
     -- ── Corner pillars ───────────────────────────────────────────────────────
