@@ -28,6 +28,23 @@ local GLOW_COL      = Color3.fromRGB(80, 180, 255)
 local equipped  = false
 local firing    = false
 local beamTimer = 0
+local fireTimer = 0
+
+local BURN_COLOR = Color3.fromRGB(255, 55, 0)
+local BURN_FADE  = 0.5
+
+local function spawnBurnLight(pos)
+    local lp = Instance.new("Part")
+    lp.Anchored = true; lp.CanCollide = false; lp.Transparency = 1
+    lp.Size = Vector3.new(0.1, 0.1, 0.1); lp.Position = pos; lp.Parent = workspace
+    local pl = Instance.new("PointLight")
+    pl.Color = BURN_COLOR; pl.Brightness = 6; pl.Range = 28; pl.Parent = lp
+    task.delay(0.1, function()
+        if not lp.Parent then return end
+        game:GetService("TweenService"):Create(pl, TweenInfo.new(BURN_FADE), {Brightness = 0}):Play()
+        task.delay(BURN_FADE, function() if lp.Parent then lp:Destroy() end end)
+    end)
+end
 
 -- ── Beam visual (Beam object between two attachments) ─────────────────────────
 
@@ -174,6 +191,12 @@ local function startFiring()
         beamObj.Enabled   = true
         beamGlow.Enabled  = true
         beamLight.Enabled = true
+
+        fireTimer = fireTimer - dt
+        if fireTimer <= 0 then
+            spawnBurnLight(aimPos)
+            fireTimer = 0.05
+        end
 
         beamTimer = beamTimer - dt
         if beamTimer <= 0 then

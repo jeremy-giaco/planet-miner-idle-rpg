@@ -101,6 +101,23 @@ tool.Unequipped:Connect(function()
     UserInputService.MouseIconEnabled = true
 end)
 
+-- ── Burn light ────────────────────────────────────────────────────────────────
+
+local BURN_COLOR = Color3.fromRGB(255, 55, 0)
+
+local function spawnBurnLight(pos)
+    local lp = Instance.new("Part")
+    lp.Anchored = true; lp.CanCollide = false; lp.Transparency = 1
+    lp.Size = Vector3.new(0.1, 0.1, 0.1); lp.Position = pos; lp.Parent = workspace
+    local pl = Instance.new("PointLight")
+    pl.Color = BURN_COLOR; pl.Brightness = 8; pl.Range = 30; pl.Parent = lp
+    task.delay(0.1, function()
+        if not lp.Parent then return end
+        TweenService:Create(pl, TweenInfo.new(0.5), {Brightness = 0}):Play()
+        task.delay(0.5, function() if lp.Parent then lp:Destroy() end end)
+    end)
+end
+
 -- ── Beam visual ───────────────────────────────────────────────────────────────
 
 local function flashBeam(startPos, endPos)
@@ -274,6 +291,7 @@ local function fire()
     local vel     = hrp and hrp.AssemblyLinearVelocity or Vector3.zero
     local startPos = basePos + vel * (vel.Magnitude / 3000)
     flashBeam(startPos, hitPos)
+    spawnBurnLight(hitPos)
 
     if result and result.Instance then
         local inst = result.Instance
