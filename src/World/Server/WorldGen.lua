@@ -506,11 +506,7 @@ function WorldGen.buildStorageRoom(cfg)
     -- South wall
     sp(Vector3.new(RW+WT, RH, WT), rx-WT/2, ry+RH/2+1, rz+RD/2, WALL_COL)
 
-    -- West wall (shared opening with base east wall) — two segments + lintel
-    local wseg = (RD - OW) / 2
-    sp(Vector3.new(WT, RH, wseg), BX+W/2, ry+RH/2+1, rz - OW/2 - wseg/2, WALL_COL)
-    sp(Vector3.new(WT, RH, wseg), BX+W/2, ry+RH/2+1, rz + OW/2 + wseg/2, WALL_COL)
-    sp(Vector3.new(WT, RH-OH, OW), BX+W/2, ry+OH+(RH-OH)/2+1, rz, col.hull)
+    -- West wall: no parts needed — the base east glass wall already provides this boundary.
 
     -- Entrance neon frame
     local nf = sp(Vector3.new(OW+1, 0.35, 0.35), BX+W/2, ry+OH+1, rz, WARM_NEON, Enum.Material.Neon, 0, false)
