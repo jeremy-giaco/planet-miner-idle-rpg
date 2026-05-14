@@ -1,5 +1,5 @@
 -- LocalScript → StarterGui/Sidebar
--- Unified collapsible sidebar: Drones · Cargo · Settings
+-- Top dropdown bar: three tabs (Drones · Cargo · Settings) each expand downward.
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -24,203 +24,169 @@ local isMobile = UserInputService.TouchEnabled and not UserInputService.Keyboard
 
 -- ── Palette ───────────────────────────────────────────────────────────────────
 
-local BG    = Color3.fromRGB(20, 14, 45)   -- slightly lighter for glass feel
-local NEON  = Color3.fromRGB(100, 60, 240)
-local TEXT  = Color3.fromRGB(220, 210, 255)
-local DIM   = Color3.fromRGB(150, 135, 185)
-local SEL   = Color3.fromRGB(90, 55, 200)
-local UNSEL = Color3.fromRGB(30, 22, 65)
+local BG_COL  = Color3.fromRGB(10, 6, 28)
+local NEON    = Color3.fromRGB(100, 60, 240)
+local TEXT    = Color3.fromRGB(220, 210, 255)
+local DIM     = Color3.fromRGB(150, 135, 185)
+local SEL     = Color3.fromRGB(90, 55, 200)
+local UNSEL   = Color3.fromRGB(30, 22, 65)
+local ALPHA   = 0.55   -- transparency for all backgrounds
 
--- ── Layout constants ──────────────────────────────────────────────────────────
+-- ── Constants ─────────────────────────────────────────────────────────────────
 
-local TAB_W   = 48
-local TAB_H   = 44
-local PANEL_W = 155
-local BTN_TOP = 72    -- below Roblox system buttons; clears iOS notch + status bar
-local ROW_H   = 26    -- thin rows to show more content
+local TAB_H   = 40     -- height of the tab bar
+local ROW_H   = 26     -- row height inside panels
+local PANEL_H = 210    -- expanded panel height (fits all content; cargo scrolls if needed)
 
 -- ── Screen GUI ────────────────────────────────────────────────────────────────
 
 local sg = Instance.new("ScreenGui")
 sg.Name = "Sidebar"; sg.ResetOnSpawn = false; sg.Parent = playerGui
 
--- ── Toggle button (top-left, panel drops below it) ────────────────────────────
+-- ── Tab bar ───────────────────────────────────────────────────────────────────
 
-local sidebarOpen = false
-
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Name                   = "SidebarToggle"
-toggleBtn.Size                   = UDim2.new(0, TAB_W, 0, TAB_H)
-toggleBtn.Position               = UDim2.new(0, 6, 0, BTN_TOP)
-toggleBtn.BackgroundColor3       = BG
-toggleBtn.BackgroundTransparency = 0.3
-toggleBtn.Text                   = "≡"
-toggleBtn.TextSize               = 26
-toggleBtn.Font                   = Enum.Font.GothamBold
-toggleBtn.TextColor3             = TEXT
-toggleBtn.BorderSizePixel        = 0
-toggleBtn.ZIndex                 = 12
-toggleBtn.Parent                 = sg
-Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 10)
-do local s = Instance.new("UIStroke"); s.Color = NEON; s.Thickness = 1.5; s.Parent = toggleBtn end
-
--- ── Main panel (below button, full remaining height with bottom margin) ───────
-
-local PANEL_TOP = BTN_TOP + TAB_H + 4      -- 4px gap between button and panel
-local PANEL_BOT_PAD = 30                   -- leave room for iOS home indicator
-
-local panel = Instance.new("Frame")
-panel.Name                   = "SidebarPanel"
-panel.Size                   = UDim2.new(0, PANEL_W, 1, -(PANEL_TOP + PANEL_BOT_PAD))
-panel.Position               = UDim2.new(0, -(PANEL_W + 10), 0, PANEL_TOP)
-panel.BackgroundColor3       = BG
-panel.BackgroundTransparency = 0.35
-panel.BorderSizePixel        = 0
-panel.ClipsDescendants       = true
-panel.ZIndex                 = 11
-panel.Parent                 = sg
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 10)
-do local s = Instance.new("UIStroke"); s.Color = NEON; s.Thickness = 1; s.Parent = panel end
-
-local OPEN_POS  = UDim2.new(0, 0,              0, PANEL_TOP)
-local CLOSE_POS = UDim2.new(0, -(PANEL_W + 10), 0, PANEL_TOP)
-local tweenInfo = TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-
-toggleBtn.MouseButton1Click:Connect(function()
-    sidebarOpen = not sidebarOpen
-    TweenService:Create(panel, tweenInfo,
-        { Position = sidebarOpen and OPEN_POS or CLOSE_POS }):Play()
-    toggleBtn.Text = sidebarOpen and "✕" or "≡"
-end)
-
--- ── Scrolling content area ────────────────────────────────────────────────────
-
-local scroll = Instance.new("ScrollingFrame")
-scroll.Name                   = "Scroll"
-scroll.Size                   = UDim2.new(1, 0, 1, 0)
-scroll.BackgroundTransparency = 1
-scroll.BorderSizePixel        = 0
-scroll.ScrollBarThickness     = 3
-scroll.ScrollBarImageColor3   = NEON
-scroll.AutomaticCanvasSize    = Enum.AutomaticSize.Y
-scroll.CanvasSize             = UDim2.new(0, 0, 0, 0)
-scroll.Parent                 = panel
-
+local tabBar = Instance.new("Frame")
+tabBar.Name                   = "TabBar"
+tabBar.Size                   = UDim2.new(1, 0, 0, TAB_H)
+tabBar.Position               = UDim2.new(0, 0, 0, 0)
+tabBar.BackgroundColor3       = BG_COL
+tabBar.BackgroundTransparency = ALPHA
+tabBar.BorderSizePixel        = 0
+tabBar.ZIndex                 = 12
+tabBar.Parent                 = sg
+do local s = Instance.new("UIStroke"); s.Color = NEON; s.Thickness = 1; s.Parent = tabBar end
 do
     local ll = Instance.new("UIListLayout")
-    ll.FillDirection = Enum.FillDirection.Vertical
-    ll.SortOrder     = Enum.SortOrder.LayoutOrder
-    ll.Padding       = UDim.new(0, 0)
-    ll.Parent        = scroll
+    ll.FillDirection  = Enum.FillDirection.Horizontal
+    ll.SortOrder      = Enum.SortOrder.LayoutOrder
+    ll.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    ll.Padding        = UDim.new(0, 0)
+    ll.Parent         = tabBar
 end
 
--- ── Scroll indicator (fade + arrow at bottom) ─────────────────────────────────
+-- ── Dropdown panel (below tab bar, slides open/closed) ───────────────────────
 
-local scrollIndicator = Instance.new("Frame")
-scrollIndicator.Name              = "ScrollIndicator"
-scrollIndicator.Size              = UDim2.new(1, 0, 0, 36)
-scrollIndicator.Position          = UDim2.new(0, 0, 1, -36)
-scrollIndicator.BackgroundColor3  = BG
-scrollIndicator.BackgroundTransparency = 0   -- the gradient handles the fade
-scrollIndicator.BorderSizePixel   = 0
-scrollIndicator.ZIndex            = 14
-scrollIndicator.Visible           = false
-scrollIndicator.Parent            = panel
+local dropPanel = Instance.new("Frame")
+dropPanel.Name                   = "DropPanel"
+dropPanel.Size                   = UDim2.new(1, 0, 0, 0)   -- starts collapsed
+dropPanel.Position               = UDim2.new(0, 0, 0, TAB_H)
+dropPanel.BackgroundColor3       = BG_COL
+dropPanel.BackgroundTransparency = ALPHA
+dropPanel.BorderSizePixel        = 0
+dropPanel.ClipsDescendants       = true
+dropPanel.ZIndex                 = 11
+dropPanel.Parent                 = sg
+do local s = Instance.new("UIStroke"); s.Color = NEON; s.Thickness = 1; s.Parent = dropPanel end
 
-do
-    local grad = Instance.new("UIGradient")
-    grad.Rotation   = 90   -- top = transparent, bottom = opaque
-    grad.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 1),
-        NumberSequenceKeypoint.new(1, 0),
-    })
-    grad.Parent = scrollIndicator
-end
+local tweenOpen  = TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local tweenClose = TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 
-local scrollArrow = Instance.new("TextLabel")
-scrollArrow.Text                 = "▼  more"
-scrollArrow.Size                 = UDim2.new(1, 0, 0, 18)
-scrollArrow.Position             = UDim2.new(0, 0, 1, -20)
-scrollArrow.BackgroundTransparency = 1
-scrollArrow.TextColor3           = NEON
-scrollArrow.TextSize             = 10
-scrollArrow.Font                 = Enum.Font.GothamBold
-scrollArrow.ZIndex               = 15
-scrollArrow.Parent               = panel
+-- ── Content frames (one per tab, only one visible at a time) ──────────────────
 
-local function updateScrollIndicator()
-    local canvasH = scroll.AbsoluteCanvasSize.Y
-    local frameH  = scroll.AbsoluteSize.Y
-    local atBottom = (scroll.CanvasPosition.Y + frameH) >= (canvasH - 2)
-    local hasOverflow = canvasH > frameH + 2
-    scrollIndicator.Visible = hasOverflow and not atBottom
-    scrollArrow.Visible     = hasOverflow and not atBottom
-end
+local contentFrames = {}   -- ["drones"|"cargo"|"settings"] = Frame
 
-scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(updateScrollIndicator)
-scroll:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(updateScrollIndicator)
-scroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateScrollIndicator)
-
--- ── Section builder ───────────────────────────────────────────────────────────
-
-local function makeSection(icon, title, layoutOrder)
-    local expanded = true
-
-    local header = Instance.new("TextButton")
-    header.Name                   = title .. "Header"
-    header.Size                   = UDim2.new(1, 0, 0, 32)
-    header.BackgroundColor3       = Color3.fromRGB(25, 18, 55)
-    header.BackgroundTransparency = 0.2
-    header.BorderSizePixel        = 0
-    header.Text                   = icon .. "  " .. title .. "  ▾"
-    header.TextSize               = 12
-    header.Font                   = Enum.Font.GothamBold
-    header.TextColor3             = TEXT
-    header.TextXAlignment         = Enum.TextXAlignment.Left
-    header.AutoButtonColor        = false
-    header.LayoutOrder            = layoutOrder * 2 - 1
-    header.Parent                 = scroll
+local function makeContentFrame(key)
+    local f = Instance.new("ScrollingFrame")
+    f.Name                   = key
+    f.Size                   = UDim2.new(1, 0, 1, 0)
+    f.BackgroundTransparency = 1
+    f.BorderSizePixel        = 0
+    f.ScrollBarThickness     = 3
+    f.ScrollBarImageColor3   = NEON
+    f.AutomaticCanvasSize    = Enum.AutomaticSize.Y
+    f.CanvasSize             = UDim2.new(0, 0, 0, 0)
+    f.Visible                = false
+    f.Parent                 = dropPanel
     do
         local p = Instance.new("UIPadding")
-        p.PaddingLeft = UDim.new(0, 10); p.Parent = header
-    end
-    do local s = Instance.new("UIStroke"); s.Color = NEON; s.Thickness = 0.5; s.Parent = header end
-
-    local content = Instance.new("Frame")
-    content.Name                  = title .. "Content"
-    content.Size                  = UDim2.new(1, 0, 0, 0)
-    content.AutomaticSize         = Enum.AutomaticSize.Y
-    content.BackgroundTransparency = 1
-    content.BorderSizePixel       = 0
-    content.LayoutOrder           = layoutOrder * 2
-    content.Parent                = scroll
-    do
-        local p = Instance.new("UIPadding")
-        p.PaddingLeft   = UDim.new(0, 6); p.PaddingRight  = UDim.new(0, 6)
-        p.PaddingTop    = UDim.new(0, 4); p.PaddingBottom = UDim.new(0, 6)
-        p.Parent = content
+        p.PaddingLeft = UDim.new(0, 8); p.PaddingRight  = UDim.new(0, 8)
+        p.PaddingTop  = UDim.new(0, 6); p.PaddingBottom = UDim.new(0, 6)
+        p.Parent = f
     end
     do
         local ll = Instance.new("UIListLayout")
         ll.FillDirection = Enum.FillDirection.Vertical
         ll.SortOrder     = Enum.SortOrder.LayoutOrder
         ll.Padding       = UDim.new(0, 3)
-        ll.Parent        = content
+        ll.Parent        = f
     end
-
-    header.MouseButton1Click:Connect(function()
-        expanded = not expanded
-        content.Visible = expanded
-        header.Text = icon .. "  " .. title .. (expanded and "  ▾" or "  ▸")
-        task.defer(updateScrollIndicator)
-    end)
-
-    return content
+    contentFrames[key] = f
+    return f
 end
 
--- ── DRONES ────────────────────────────────────────────────────────────────────
+-- ── Tab button builder ────────────────────────────────────────────────────────
 
-local droneContent = makeSection("🤖", "DRONES", 1)
+local activeTab   = nil
+local tabButtons  = {}
+
+local function setTab(key)
+    -- Same tab tapped → close
+    if activeTab == key then
+        activeTab = nil
+        for _, btn in pairs(tabButtons) do
+            btn.BackgroundColor3 = BG_COL
+            btn.BackgroundTransparency = ALPHA + 0.1
+        end
+        for _, f in pairs(contentFrames) do f.Visible = false end
+        TweenService:Create(dropPanel, tweenClose, { Size = UDim2.new(1, 0, 0, 0) }):Play()
+        return
+    end
+    -- Switch to new tab
+    activeTab = key
+    for k, btn in pairs(tabButtons) do
+        btn.BackgroundColor3       = (k == key) and SEL or BG_COL
+        btn.BackgroundTransparency = (k == key) and 0.25 or (ALPHA + 0.1)
+    end
+    for k, f in pairs(contentFrames) do f.Visible = (k == key) end
+    TweenService:Create(dropPanel, tweenOpen, { Size = UDim2.new(1, 0, 0, PANEL_H) }):Play()
+end
+
+local TAB_DEFS = {
+    { key = "drones",   icon = "🤖", label = "DRONES",   order = 1 },
+    { key = "cargo",    icon = "📦", label = "CARGO",    order = 2 },
+    { key = "settings", icon = "⚙",  label = "SETTINGS", order = 3 },
+}
+
+for _, def in ipairs(TAB_DEFS) do
+    makeContentFrame(def.key)
+
+    local btn = Instance.new("TextButton")
+    btn.Name                   = def.key .. "Tab"
+    btn.Size                   = UDim2.new(1/3, 0, 1, 0)
+    btn.BackgroundColor3       = BG_COL
+    btn.BackgroundTransparency = ALPHA + 0.1
+    btn.Text                   = def.icon .. " " .. def.label
+    btn.TextSize               = 13
+    btn.Font                   = Enum.Font.GothamBold
+    btn.TextColor3             = TEXT
+    btn.BorderSizePixel        = 0
+    btn.AutoButtonColor        = false
+    btn.LayoutOrder            = def.order
+    btn.ZIndex                 = 13
+    btn.Parent                 = tabBar
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 0)
+
+    tabButtons[def.key] = btn
+    local k = def.key
+    btn.MouseButton1Click:Connect(function() setTab(k) end)
+end
+
+-- ── Helper: plain row label ────────────────────────────────────────────────────
+
+local function rowLabel(parent, text, order)
+    local lbl = Instance.new("TextLabel")
+    lbl.Text = text; lbl.Size = UDim2.new(1, 0, 0, 16)
+    lbl.BackgroundTransparency = 1; lbl.TextColor3 = DIM
+    lbl.TextSize = 9; lbl.Font = Enum.Font.GothamBold
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.LayoutOrder = order; lbl.Parent = parent
+end
+
+-- ══════════════════════════════════════════════════════════════════════════════
+-- DRONES
+-- ══════════════════════════════════════════════════════════════════════════════
+
+local droneFrame = contentFrames["drones"]
 
 local MODES      = { "scavenger", "sentry", "guard" }
 local MODE_LABEL = { scavenger = "SCVNG", sentry = "SNTRY", guard = "GUARD" }
@@ -250,51 +216,48 @@ for i = 1, 6 do
     local initMode = DEFAULT_MODES[i]
 
     local row = Instance.new("Frame")
-    row.Name = "Drone"..i; row.Size = UDim2.new(1, 0, 0, ROW_H)
-    row.BackgroundColor3 = Color3.fromRGB(14, 12, 30)
-    row.BackgroundTransparency = 0.3; row.BorderSizePixel = 0
-    row.LayoutOrder = i; row.Parent = droneContent
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 5)
+    row.Size = UDim2.new(1, 0, 0, ROW_H)
+    row.BackgroundTransparency = 1; row.BorderSizePixel = 0
+    row.LayoutOrder = i; row.Parent = droneFrame
 
     local lbl = Instance.new("TextLabel")
-    lbl.Text = tostring(i); lbl.Size = UDim2.new(0, 16, 1, 0)
-    lbl.Position = UDim2.new(0, 4, 0, 0); lbl.BackgroundTransparency = 1
-    lbl.TextColor3 = DIM; lbl.TextSize = 10; lbl.Font = Enum.Font.GothamBold
-    lbl.Parent = row
+    lbl.Text = tostring(i); lbl.Size = UDim2.new(0, 14, 1, 0)
+    lbl.BackgroundTransparency = 1; lbl.TextColor3 = DIM
+    lbl.TextSize = 9; lbl.Font = Enum.Font.GothamBold; lbl.Parent = row
 
     local btn = Instance.new("TextButton")
-    btn.Name = "ModeBtn"; btn.Size = UDim2.new(1, -24, 1, -4)
-    btn.Position = UDim2.new(0, 22, 0, 2); btn.BackgroundColor3 = MODE_BG[initMode]
-    btn.Text = ""; btn.BorderSizePixel = 0; btn.AutoButtonColor = false
+    btn.Name = "ModeBtn"; btn.Size = UDim2.new(1, -18, 1, -2)
+    btn.Position = UDim2.new(0, 16, 0, 1)
+    btn.BackgroundColor3 = MODE_BG[initMode]; btn.Text = ""
+    btn.BorderSizePixel = 0; btn.AutoButtonColor = false
     btn.ClipsDescendants = true; btn.Parent = row
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
 
     local fill = Instance.new("Frame")
-    fill.Name = "Fill"; fill.Size = UDim2.new(1, 0, 1, 0)
-    fill.BackgroundColor3 = MODE_FILL[initMode]; fill.BorderSizePixel = 0
-    fill.ZIndex = btn.ZIndex + 1; fill.Parent = btn
+    fill.Size = UDim2.new(1, 0, 1, 0); fill.BackgroundColor3 = MODE_FILL[initMode]
+    fill.BorderSizePixel = 0; fill.ZIndex = btn.ZIndex + 1; fill.Parent = btn
     Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 4)
 
-    local modeText = Instance.new("TextLabel")
-    modeText.Text = MODE_LABEL[initMode]; modeText.Size = UDim2.new(1, 0, 1, 0)
-    modeText.BackgroundTransparency = 1; modeText.TextColor3 = Color3.new(0, 0, 0)
-    modeText.TextSize = 9; modeText.Font = Enum.Font.GothamBold
-    modeText.ZIndex = fill.ZIndex + 1; modeText.Parent = btn
+    local mt = Instance.new("TextLabel")
+    mt.Text = MODE_LABEL[initMode]; mt.Size = UDim2.new(1, 0, 1, 0)
+    mt.BackgroundTransparency = 1; mt.TextColor3 = Color3.new(0, 0, 0)
+    mt.TextSize = 9; mt.Font = Enum.Font.GothamBold
+    mt.ZIndex = fill.ZIndex + 1; mt.Parent = btn
 
-    healthFills[i] = fill; modeLabels[i] = modeText; modeBtns[i] = btn
+    healthFills[i] = fill; modeLabels[i] = mt; modeBtns[i] = btn
 
     local idx = i
     btn.MouseButton1Click:Connect(function()
         if not droneAlive[idx] then return end
-        local cur = droneMode[idx]; local nextIdx = 1
+        local cur = droneMode[idx]; local ni = 1
         for m, mode in ipairs(MODES) do
-            if mode == cur then nextIdx = (m % #MODES) + 1; break end
+            if mode == cur then ni = (m % #MODES) + 1; break end
         end
-        local newMode = MODES[nextIdx]; droneMode[idx] = newMode
-        fill.BackgroundColor3 = MODE_FILL[newMode]
-        btn.BackgroundColor3  = MODE_BG[newMode]
-        modeText.Text         = MODE_LABEL[newMode]
-        setDroneModeEvent:FireServer(idx, newMode)
+        local nm = MODES[ni]; droneMode[idx] = nm
+        fill.BackgroundColor3 = MODE_FILL[nm]
+        btn.BackgroundColor3  = MODE_BG[nm]
+        mt.Text               = MODE_LABEL[nm]
+        setDroneModeEvent:FireServer(idx, nm)
     end)
 end
 
@@ -307,44 +270,43 @@ droneHealthEvent.OnClientEvent:Connect(function(idx, health, maxHealth, alive)
         btn.BackgroundColor3 = OFFLINE_BG; mt.Text = "OFFLN"
         mt.TextColor3 = Color3.fromRGB(180, 60, 60)
     else
-        local t = math.clamp(health / (maxHealth or 100), 0, 1)
-        fill.Size = UDim2.new(t, 0, 1, 0)
+        fill.Size = UDim2.new(math.clamp(health/(maxHealth or 100),0,1), 0, 1, 0)
         local mode = droneMode[idx]
         fill.BackgroundColor3 = MODE_FILL[mode]; btn.BackgroundColor3 = MODE_BG[mode]
         mt.Text = MODE_LABEL[mode]; mt.TextColor3 = Color3.new(0, 0, 0)
     end
 end)
 
--- ── CARGO ─────────────────────────────────────────────────────────────────────
+-- ══════════════════════════════════════════════════════════════════════════════
+-- CARGO
+-- ══════════════════════════════════════════════════════════════════════════════
 
-local cargoContent = makeSection("📦", "CARGO", 2)
+local cargoFrame = contentFrames["cargo"]
 
 local inventory = { fragments = {}, metals = {} }
 local itemSlots = {}
 
 local SLOT_COLOR = {
-    Rock = Color3.fromRGB(130, 100, 70), Metal = Color3.fromRGB(160, 165, 185),
-    Crystal = Color3.fromRGB(130, 75, 240), Ice = Color3.fromRGB(150, 200, 255),
-    Iron = Color3.fromRGB(140, 130, 120), Copper = Color3.fromRGB(210, 105, 55),
-    Silver = Color3.fromRGB(200, 205, 220), Gold = Color3.fromRGB(220, 170, 20),
-    Titanium = Color3.fromRGB(155, 175, 200),
+    Rock = Color3.fromRGB(130,100,70), Metal = Color3.fromRGB(160,165,185),
+    Crystal = Color3.fromRGB(130,75,240), Ice = Color3.fromRGB(150,200,255),
+    Iron = Color3.fromRGB(140,130,120), Copper = Color3.fromRGB(210,105,55),
+    Silver = Color3.fromRGB(200,205,220), Gold = Color3.fromRGB(220,170,20),
+    Titanium = Color3.fromRGB(155,175,200),
 }
 
 local function makeToast(text, color, worldPos)
     local sx, sy = 0.5, 0.5
     if worldPos then
         local sp, on = camera:WorldToScreenPoint(worldPos)
-        if on then local vp = camera.ViewportSize; sx = sp.X/vp.X; sy = sp.Y/vp.Y end
+        if on then local vp = camera.ViewportSize; sx=sp.X/vp.X; sy=sp.Y/vp.Y end
     end
     local t = Instance.new("TextLabel")
-    t.Text = text; t.Size = UDim2.new(0, 180, 0, 32)
-    t.Position = UDim2.new(sx, -90, sy, -16); t.BackgroundTransparency = 1
-    t.TextColor3 = color; t.TextTransparency = 0.1; t.TextSize = 20
-    t.Font = Enum.Font.GothamBold; t.TextStrokeColor3 = Color3.new(0,0,0)
-    t.TextStrokeTransparency = 0.45; t.Parent = sg
-    TweenService:Create(t, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        TextTransparency = 1, TextStrokeTransparency = 1,
-        Position = UDim2.new(sx, -90, sy - 0.06, -16),
+    t.Text=text; t.Size=UDim2.new(0,180,0,32); t.Position=UDim2.new(sx,-90,sy,-16)
+    t.BackgroundTransparency=1; t.TextColor3=color; t.TextTransparency=0.1; t.TextSize=20
+    t.Font=Enum.Font.GothamBold; t.TextStrokeColor3=Color3.new(0,0,0)
+    t.TextStrokeTransparency=0.45; t.Parent=sg
+    TweenService:Create(t, TweenInfo.new(1.2,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{
+        TextTransparency=1,TextStrokeTransparency=1,Position=UDim2.new(sx,-90,sy-0.06,-16),
     }):Play()
     task.delay(1.2, function() if t and t.Parent then t:Destroy() end end)
 end
@@ -353,160 +315,138 @@ local function rebuildCargo()
     for _, s in pairs(itemSlots) do s:Destroy() end
     itemSlots = {}
     local order = 1
-    for name, count in pairs(inventory.metals) do
-        local slot = Instance.new("TextLabel")
-        slot.Text = string.format("%s ×%d", name, count)
-        slot.Size = UDim2.new(1, 0, 0, ROW_H)
-        slot.BackgroundColor3 = SLOT_COLOR[name] or Color3.fromRGB(180, 160, 80)
-        slot.BackgroundTransparency = 0.4; slot.TextColor3 = Color3.new(1,1,1)
-        slot.TextSize = 11; slot.Font = Enum.Font.Gotham
-        slot.BorderSizePixel = 0; slot.LayoutOrder = order; slot.Parent = cargoContent
-        Instance.new("UICorner", slot).CornerRadius = UDim.new(0, 4)
-        itemSlots["m_"..name] = slot; order += 1
+    local function makeSlot(text, color, key)
+        local s = Instance.new("TextLabel")
+        s.Text=text; s.Size=UDim2.new(1,0,0,ROW_H)
+        s.BackgroundColor3=color; s.BackgroundTransparency=0.45
+        s.TextColor3=Color3.new(1,1,1); s.TextSize=11; s.Font=Enum.Font.Gotham
+        s.BorderSizePixel=0; s.LayoutOrder=order; s.Parent=cargoFrame
+        Instance.new("UICorner",s).CornerRadius=UDim.new(0,4)
+        itemSlots[key]=s; order+=1
     end
-    for fragType, count in pairs(inventory.fragments) do
-        local slot = Instance.new("TextLabel")
-        slot.Text = string.format("%s ×%d", fragType, count)
-        slot.Size = UDim2.new(1, 0, 0, ROW_H)
-        slot.BackgroundColor3 = SLOT_COLOR[fragType] or Color3.fromRGB(90, 90, 110)
-        slot.BackgroundTransparency = 0.4; slot.TextColor3 = Color3.new(1,1,1)
-        slot.TextSize = 11; slot.Font = Enum.Font.Gotham
-        slot.BorderSizePixel = 0; slot.LayoutOrder = order; slot.Parent = cargoContent
-        Instance.new("UICorner", slot).CornerRadius = UDim.new(0, 4)
-        itemSlots["f_"..fragType] = slot; order += 1
+    for name,count in pairs(inventory.metals) do
+        makeSlot(string.format("%s ×%d",name,count), SLOT_COLOR[name] or Color3.fromRGB(180,160,80), "m_"..name)
     end
-    local hasItems = next(inventory.fragments) ~= nil or next(inventory.metals) ~= nil
-    toggleBtn.BackgroundColor3 = hasItems and Color3.fromRGB(70, 40, 160) or BG
-    toggleBtn.TextColor3 = hasItems and Color3.fromRGB(255, 220, 100) or TEXT
-    task.defer(updateScrollIndicator)
+    for ft,count in pairs(inventory.fragments) do
+        makeSlot(string.format("%s ×%d",ft,count), SLOT_COLOR[ft] or Color3.fromRGB(90,90,110), "f_"..ft)
+    end
+    -- Glow cargo tab if items present
+    local has = next(inventory.fragments)~=nil or next(inventory.metals)~=nil
+    tabButtons["cargo"].TextColor3 = has and Color3.fromRGB(255,220,80) or TEXT
 end
 
-collectFragmentEvent.OnClientEvent:Connect(function(fragType, qty, worldPos)
-    inventory.fragments[fragType] = (inventory.fragments[fragType] or 0) + (qty or 1)
-    rebuildCargo()
-    makeToast("+" .. (qty or 1) .. " " .. fragType, SLOT_COLOR[fragType] or Color3.new(1,1,1), worldPos)
+collectFragmentEvent.OnClientEvent:Connect(function(ft,qty,wp)
+    inventory.fragments[ft]=(inventory.fragments[ft] or 0)+(qty or 1)
+    rebuildCargo(); makeToast("+"..( qty or 1).." "..ft, SLOT_COLOR[ft] or Color3.new(1,1,1), wp)
 end)
-collectMetalEvent.OnClientEvent:Connect(function(metalName)
-    inventory.metals[metalName] = (inventory.metals[metalName] or 0) + 1
-    rebuildCargo()
-    makeToast("+ " .. metalName, SLOT_COLOR[metalName] or Color3.fromRGB(255, 210, 50))
+collectMetalEvent.OnClientEvent:Connect(function(name)
+    inventory.metals[name]=(inventory.metals[name] or 0)+1
+    rebuildCargo(); makeToast("+ "..name, SLOT_COLOR[name] or Color3.fromRGB(255,210,50))
 end)
-deductMetalEvent.OnClientEvent:Connect(function(metalName)
-    local c = inventory.metals[metalName] or 0
-    inventory.metals[metalName] = c <= 1 and nil or c - 1
-    rebuildCargo()
-    makeToast("- " .. metalName, Color3.fromRGB(200, 80, 80))
+deductMetalEvent.OnClientEvent:Connect(function(name)
+    local c=inventory.metals[name] or 0
+    inventory.metals[name]=c<=1 and nil or c-1
+    rebuildCargo(); makeToast("- "..name, Color3.fromRGB(200,80,80))
 end)
-
 rebuildCargo()
 
--- ── SETTINGS ──────────────────────────────────────────────────────────────────
+-- ══════════════════════════════════════════════════════════════════════════════
+-- SETTINGS
+-- ══════════════════════════════════════════════════════════════════════════════
 
-local settingsContent = makeSection("⚙", "SETTINGS", 3)
-
-local function sLabel(text, order)
-    local lbl = Instance.new("TextLabel")
-    lbl.Text = text; lbl.Size = UDim2.new(1, 0, 0, 16)
-    lbl.BackgroundTransparency = 1; lbl.TextColor3 = DIM
-    lbl.TextSize = 9; lbl.Font = Enum.Font.GothamBold
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.LayoutOrder = order; lbl.Parent = settingsContent
-end
+local settingsFrame = contentFrames["settings"]
 
 local function oRow(options, currentKey, order, onSelect)
     local c = Instance.new("Frame")
-    c.Size = UDim2.new(1, 0, 0, ROW_H + 2); c.BackgroundTransparency = 1
-    c.LayoutOrder = order; c.Parent = settingsContent
-    local ll = Instance.new("UIListLayout")
-    ll.FillDirection = Enum.FillDirection.Horizontal; ll.Padding = UDim.new(0, 3); ll.Parent = c
-    local btns = {}
-    for _, opt in ipairs(options) do
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1/#options, -3, 1, 0)
-        btn.BackgroundColor3 = (opt.key == currentKey) and SEL or UNSEL
-        btn.Text = opt.label; btn.TextSize = 10; btn.Font = Enum.Font.GothamBold
-        btn.TextColor3 = Color3.new(1,1,1); btn.BorderSizePixel = 0
-        btn.AutoButtonColor = false; btn.Parent = c
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-        table.insert(btns, btn)
+    c.Size=UDim2.new(1,0,0,ROW_H+2); c.BackgroundTransparency=1
+    c.LayoutOrder=order; c.Parent=settingsFrame
+    local ll=Instance.new("UIListLayout")
+    ll.FillDirection=Enum.FillDirection.Horizontal; ll.Padding=UDim.new(0,3); ll.Parent=c
+    local btns={}
+    for _,opt in ipairs(options) do
+        local btn=Instance.new("TextButton")
+        btn.Size=UDim2.new(1/#options,-3,1,0)
+        btn.BackgroundColor3=(opt.key==currentKey) and SEL or UNSEL
+        btn.Text=opt.label; btn.TextSize=10; btn.Font=Enum.Font.GothamBold
+        btn.TextColor3=Color3.new(1,1,1); btn.BorderSizePixel=0
+        btn.AutoButtonColor=false; btn.Parent=c
+        Instance.new("UICorner",btn).CornerRadius=UDim.new(0,4)
+        table.insert(btns,btn)
         btn.MouseButton1Click:Connect(function()
-            for _, b in ipairs(btns) do b.BackgroundColor3 = UNSEL end
-            btn.BackgroundColor3 = SEL; onSelect(opt.key)
+            for _,b in ipairs(btns) do b.BackgroundColor3=UNSEL end
+            btn.BackgroundColor3=SEL; onSelect(opt.key)
         end)
     end
 end
 
 local function tRow(label, currentVal, order, onToggle)
-    local c = Instance.new("Frame")
-    c.Size = UDim2.new(1, 0, 0, ROW_H); c.BackgroundTransparency = 1
-    c.LayoutOrder = order; c.Parent = settingsContent
-    local lbl = Instance.new("TextLabel")
-    lbl.Text = label; lbl.Size = UDim2.new(0.62, 0, 1, 0)
-    lbl.BackgroundTransparency = 1; lbl.TextColor3 = TEXT
-    lbl.TextSize = 10; lbl.Font = Enum.Font.Gotham
-    lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.Parent = c
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 46, 0, ROW_H - 2); btn.Position = UDim2.new(1, -46, 0.5, -(ROW_H-2)/2)
-    btn.BackgroundColor3 = currentVal and Color3.fromRGB(0, 170, 70) or Color3.fromRGB(80, 30, 30)
-    btn.Text = currentVal and "ON" or "OFF"; btn.TextSize = 10; btn.Font = Enum.Font.GothamBold
-    btn.TextColor3 = Color3.new(1,1,1); btn.BorderSizePixel = 0
-    btn.AutoButtonColor = false; btn.Parent = c
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-    local state = currentVal
+    local c=Instance.new("Frame")
+    c.Size=UDim2.new(1,0,0,ROW_H); c.BackgroundTransparency=1
+    c.LayoutOrder=order; c.Parent=settingsFrame
+    local lbl=Instance.new("TextLabel")
+    lbl.Text=label; lbl.Size=UDim2.new(0.6,0,1,0)
+    lbl.BackgroundTransparency=1; lbl.TextColor3=TEXT
+    lbl.TextSize=10; lbl.Font=Enum.Font.Gotham
+    lbl.TextXAlignment=Enum.TextXAlignment.Left; lbl.Parent=c
+    local btn=Instance.new("TextButton")
+    btn.Size=UDim2.new(0,46,0,ROW_H-2); btn.Position=UDim2.new(1,-46,0.5,-(ROW_H-2)/2)
+    btn.BackgroundColor3=currentVal and Color3.fromRGB(0,170,70) or Color3.fromRGB(80,30,30)
+    btn.Text=currentVal and "ON" or "OFF"; btn.TextSize=10; btn.Font=Enum.Font.GothamBold
+    btn.TextColor3=Color3.new(1,1,1); btn.BorderSizePixel=0; btn.AutoButtonColor=false; btn.Parent=c
+    Instance.new("UICorner",btn).CornerRadius=UDim.new(0,4)
+    local state=currentVal
     btn.MouseButton1Click:Connect(function()
-        state = not state
-        btn.BackgroundColor3 = state and Color3.fromRGB(0, 170, 70) or Color3.fromRGB(80, 30, 30)
-        btn.Text = state and "ON" or "OFF"; onToggle(state)
+        state=not state
+        btn.BackgroundColor3=state and Color3.fromRGB(0,170,70) or Color3.fromRGB(80,30,30)
+        btn.Text=state and "ON" or "OFF"; onToggle(state)
     end)
 end
 
 local CONTROL_MODES = {
-    { key = "classic",    label = "Classic" },
-    { key = "twin-stick", label = "Sticks"  },
-    { key = "tap-to-fly", label = "Tap"     },
-    { key = "gyro",       label = "Gyro"    },
+    {key="classic",label="Classic"},{key="twin-stick",label="Sticks"},
+    {key="tap-to-fly",label="Tap"},{key="gyro",label="Gyro"},
 }
-sLabel("CONTROL MODE", 1)
+rowLabel(settingsFrame, "CONTROL MODE", 1)
 oRow(CONTROL_MODES, ClientSettings.controlMode, 2, function(key)
-    ClientSettings.controlMode = key; saveSettings:FireServer("controlMode", key)
+    ClientSettings.controlMode=key; saveSettings:FireServer("controlMode",key)
 end)
-sLabel("INVERT Y", 3)
+rowLabel(settingsFrame, "INVERT Y", 3)
 tRow("Invert Y-Axis", ClientSettings.invertY, 4, function(val)
-    ClientSettings.invertY = val; saveSettings:FireServer("invertY", val)
+    ClientSettings.invertY=val; saveSettings:FireServer("invertY",val)
 end)
 
 if isMobile then
-    sLabel("GYRO SENSITIVITY", 5)
-    local sensVal = ClientSettings.gyroSensitivity or 1.0
-    local sc = Instance.new("Frame")
-    sc.Size = UDim2.new(1, 0, 0, ROW_H + 4); sc.BackgroundTransparency = 1
-    sc.LayoutOrder = 6; sc.Parent = settingsContent
-    local sensLbl = Instance.new("TextLabel")
-    sensLbl.Size = UDim2.new(0, 40, 1, 0); sensLbl.Position = UDim2.new(0.5, -20, 0, 0)
-    sensLbl.BackgroundTransparency = 1; sensLbl.TextColor3 = TEXT
-    sensLbl.TextSize = 12; sensLbl.Font = Enum.Font.GothamBold
-    sensLbl.Text = string.format("%.1f", sensVal); sensLbl.Parent = sc
-    local function adjBtn(label, xOff, delta)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 34, 0, ROW_H); btn.Position = UDim2.new(0, xOff, 0.5, -ROW_H/2)
-        btn.BackgroundColor3 = UNSEL; btn.Text = label; btn.TextSize = 16
-        btn.Font = Enum.Font.GothamBold; btn.TextColor3 = TEXT
-        btn.BorderSizePixel = 0; btn.AutoButtonColor = false; btn.Parent = sc
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+    rowLabel(settingsFrame, "GYRO SENSITIVITY", 5)
+    local sensVal=ClientSettings.gyroSensitivity or 1.0
+    local sc=Instance.new("Frame")
+    sc.Size=UDim2.new(1,0,0,ROW_H+4); sc.BackgroundTransparency=1
+    sc.LayoutOrder=6; sc.Parent=settingsFrame
+    local sensLbl=Instance.new("TextLabel")
+    sensLbl.Size=UDim2.new(0,40,1,0); sensLbl.Position=UDim2.new(0.5,-20,0,0)
+    sensLbl.BackgroundTransparency=1; sensLbl.TextColor3=TEXT
+    sensLbl.TextSize=12; sensLbl.Font=Enum.Font.GothamBold
+    sensLbl.Text=string.format("%.1f",sensVal); sensLbl.Parent=sc
+    local function adjBtn(label,xOff,delta)
+        local btn=Instance.new("TextButton")
+        btn.Size=UDim2.new(0,34,0,ROW_H); btn.Position=UDim2.new(0,xOff,0.5,-ROW_H/2)
+        btn.BackgroundColor3=UNSEL; btn.Text=label; btn.TextSize=16
+        btn.Font=Enum.Font.GothamBold; btn.TextColor3=TEXT
+        btn.BorderSizePixel=0; btn.AutoButtonColor=false; btn.Parent=sc
+        Instance.new("UICorner",btn).CornerRadius=UDim.new(0,4)
         btn.MouseButton1Click:Connect(function()
-            sensVal = math.clamp(sensVal + delta, 0.1, 3.0)
-            sensLbl.Text = string.format("%.1f", sensVal)
-            ClientSettings.gyroSensitivity = sensVal
-            saveSettings:FireServer("gyroSensitivity", sensVal)
+            sensVal=math.clamp(sensVal+delta,0.1,3.0)
+            sensLbl.Text=string.format("%.1f",sensVal)
+            ClientSettings.gyroSensitivity=sensVal
+            saveSettings:FireServer("gyroSensitivity",sensVal)
         end)
     end
-    adjBtn("−", 4, -0.1); adjBtn("+", 110, 0.1)
+    adjBtn("−",4,-0.1); adjBtn("+",110,0.1)
 end
 
 loadSettings.OnClientEvent:Connect(function(settings)
-    for k, v in pairs(settings) do ClientSettings[k] = v end
-    if isMobile and ClientSettings.controlMode == "classic" then
-        ClientSettings.controlMode = "twin-stick"
+    for k,v in pairs(settings) do ClientSettings[k]=v end
+    if isMobile and ClientSettings.controlMode=="classic" then
+        ClientSettings.controlMode="twin-stick"
     end
 end)
 
