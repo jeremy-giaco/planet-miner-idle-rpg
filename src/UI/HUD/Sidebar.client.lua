@@ -30,7 +30,7 @@ local TEXT  = Color3.fromRGB(220, 210, 255)
 local DIM   = Color3.fromRGB(150, 135, 185)
 local SEL   = Color3.fromRGB(90, 55, 200)
 local UNSEL = Color3.fromRGB(30, 22, 65)
-local ALPHA = 0.35  -- popup background transparency
+local ALPHA = 0.0   -- popups fully opaque for readability
 
 local ROW_H          = 26
 local BTN_H          = 36
@@ -44,8 +44,25 @@ local ROBLOX_RESERVED = 196
 
 local sg = Instance.new("ScreenGui")
 sg.Name = "Sidebar"; sg.ResetOnSpawn = false
-sg.IgnoreGuiInset = true   -- puts Y=0 at absolute screen top, same level as Roblox buttons
+sg.IgnoreGuiInset = true
 sg.Parent = playerGui
+
+-- ── Backdrop — invisible full-screen button; click anywhere to close popups ───
+
+local backdrop = Instance.new("TextButton")
+backdrop.Name                   = "Backdrop"
+backdrop.Size                   = UDim2.new(1, 0, 1, 0)
+backdrop.BackgroundTransparency = 1
+backdrop.Text                   = ""
+backdrop.BorderSizePixel        = 0
+backdrop.ZIndex                 = 5   -- below popups (ZIndex 20) and buttons (ZIndex 15)
+backdrop.Visible                = false
+backdrop.Parent                 = sg
+
+local function closeAll()
+    backdrop.Visible = false
+    -- allCloseFns populated later; call via shared table
+end
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -147,6 +164,13 @@ end
 
 -- Track open popups so only one is open at a time
 local allCloseFns = {}
+local allTabBtns  = {}
+
+backdrop.MouseButton1Click:Connect(function()
+    for _, fn in ipairs(allCloseFns) do fn() end
+    for _, b  in ipairs(allTabBtns)  do b.TextColor3 = Color3.fromRGB(255,255,255) end
+    backdrop.Visible = false
+end)
 
 local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
     table.insert(allCloseFns, closeFn)
@@ -178,15 +202,20 @@ local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
         popup.Position = UDim2.new(0, px, 0, BTN_H)
     end)
 
+    table.insert(allTabBtns, btn)
+
     btn.MouseButton1Click:Connect(function()
         local opening = toggleFn()
         if opening then
             for _, fn in ipairs(allCloseFns) do
                 if fn ~= closeFn then fn() end
             end
-            btn.TextColor3 = Color3.fromRGB(255, 240, 100)
+            for _, b in ipairs(allTabBtns) do b.TextColor3 = Color3.fromRGB(255,255,255) end
+            btn.TextColor3  = Color3.fromRGB(255, 240, 100)
+            backdrop.Visible = true
         else
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.TextColor3   = Color3.fromRGB(255, 255, 255)
+            backdrop.Visible = false
         end
     end)
 
