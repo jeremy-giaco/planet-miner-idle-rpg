@@ -200,7 +200,8 @@ local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
         local pw = popup.Size.X.Offset
         local px = ax + bw/2 - pw/2
         local screenW = camera.ViewportSize.X
-        px = math.clamp(px, 4, screenW - pw - 4)
+        local clampMax = math.max(4, screenW - pw - 4)
+        px = math.clamp(px, 4, clampMax)
         popup.Position = UDim2.new(0, px, 0, BTN_H)
     end)
 
