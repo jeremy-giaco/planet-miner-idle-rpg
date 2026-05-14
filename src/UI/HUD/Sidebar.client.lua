@@ -30,7 +30,7 @@ local TEXT  = Color3.fromRGB(235, 225, 255)
 local DIM   = Color3.fromRGB(190, 175, 225)
 local SEL   = Color3.fromRGB(90, 55, 200)
 local UNSEL = Color3.fromRGB(45, 32, 90)
-local ALPHA = 0.0   -- popups fully opaque for readability
+local ALPHA = 0.25  -- popup background transparency
 
 local ROW_H          = 26
 local BTN_H          = 36
@@ -354,7 +354,7 @@ for order, def in ipairs(RESOURCE_DEFS) do
     name.Text=def.label; name.Size=UDim2.new(0.65,0,1,0)
     name.Position=UDim2.new(0,16,0,0)
     name.BackgroundTransparency=1; name.TextColor3=TEXT
-    name.TextSize=12; name.Font=Enum.Font.Gotham
+    name.TextSize=12; name.Font=Enum.Font.GothamBold
     name.TextXAlignment=Enum.TextXAlignment.Left; name.Parent=row
 
     -- Qty (right-aligned)
