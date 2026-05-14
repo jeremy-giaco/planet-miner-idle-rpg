@@ -38,7 +38,7 @@ local beamGlow       = nil
 local beamLight      = nil
 
 local overlapParams = OverlapParams.new()
-overlapParams.FilterType = Enum.RaycastFilterType.Include
+overlapParams.FilterType = Enum.RaycastFilterType.Exclude
 
 local function buildBeam()
     local character = player.Character
@@ -194,8 +194,7 @@ end
 
 tool.Equipped:Connect(function()
     equipped = true
-    -- Set debris filter now that folder is guaranteed to exist
-    overlapParams.FilterDescendantsInstances = {workspace:WaitForChild("Debris")}
+    overlapParams.FilterDescendantsInstances = {player.Character}
     buildBeam()
     startFiring()
 end)
