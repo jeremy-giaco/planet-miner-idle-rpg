@@ -1,6 +1,7 @@
 -- LocalScript → inside the LaserGun Tool in StarterPack
 local RunService        = game:GetService("RunService")
 if not RunService:IsClient() then return end
+if not script.Parent:IsA("Tool") then return end
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService  = game:GetService("UserInputService")

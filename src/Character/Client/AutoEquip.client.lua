@@ -1,5 +1,6 @@
 -- LocalScript → StarterCharacterScripts, rename to "AutoEquip"
 if not game:GetService("RunService"):IsClient() then return end
+if not script.Parent:IsA("Model") then return end
 local Players  = game:GetService("Players")
 local player   = Players.LocalPlayer
 local humanoid = script.Parent:WaitForChild("Humanoid")

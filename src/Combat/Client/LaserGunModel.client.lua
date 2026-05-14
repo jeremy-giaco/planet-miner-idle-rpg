@@ -2,6 +2,7 @@
 -- Builds a futuristic rifle model welded to the Handle.
 -- Runs once on equip; parts are destroyed when tool is unequipped.
 if not game:GetService("RunService"):IsClient() then return end
+if not script.Parent:IsA("Tool") then return end
 
 local tool   = script.Parent
 local handle = tool:WaitForChild("Handle")

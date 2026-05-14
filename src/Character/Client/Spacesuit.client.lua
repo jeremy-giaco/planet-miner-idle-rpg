@@ -2,6 +2,7 @@
 -- Attaches visible spacesuit parts: visor, helmet rim, shoulder pads, antenna.
 -- Suit body colors are applied server-side in Character/Server/Spacesuit.server.lua
 if not game:GetService("RunService"):IsClient() then return end
+if not script.Parent:IsA("Model") then return end
 
 local character = script.Parent
 local humanoid  = character:WaitForChild("Humanoid") -- luacheck: ignore

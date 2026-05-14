@@ -4,6 +4,7 @@
 
 local RunService        = game:GetService("RunService")
 if not RunService:IsClient() then return end
+if not script.Parent:IsA("Model") then return end
 local UserInputService  = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config            = require(ReplicatedStorage:WaitForChild("Config"))
