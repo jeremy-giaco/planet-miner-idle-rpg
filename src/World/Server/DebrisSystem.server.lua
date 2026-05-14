@@ -108,6 +108,24 @@ end
 
 local activeCollectibles = {}  -- array of {part, fragType, qty}
 
+-- ── Collectible spin + beacon ─────────────────────────────────────────────────
+local spinParts = {}  -- { part, beam, up, baseCF, angle }
+
+RunService.Heartbeat:Connect(function(dt)
+    for i = #spinParts, 1, -1 do
+        local s = spinParts[i]
+        if not (s.part and s.part.Parent) then
+            if s.beam   and s.beam.Parent   then s.beam:Destroy()   end
+            if s.halo   and s.halo.Parent   then s.halo:Destroy()   end
+            if s.anchor and s.anchor.Parent then s.anchor:Destroy() end
+            table.remove(spinParts, i)
+        else
+            s.angle = s.angle + dt * 1.4   -- ~1.4 rad/s rotation
+            s.part.CFrame = s.baseCF * CFrame.Angles(0, s.angle, 0)
+        end
+    end
+end)
+
 local function pick(t) return t[math.random(1, #t)] end
 
 
@@ -143,15 +161,156 @@ local function spawnCollectible(position, fragType)
     -- Place centre at the surface so the collectible sits flush
     local surfPos    = PLANET_CENTER + snapDir.Unit * PLANET_RADIUS
 
-    part.CFrame      = CFrame.new(surfPos)
-                     * CFrame.Angles(
-                           math.random() * math.pi * 2,
-                           math.random() * math.pi * 2,
-                           math.random() * math.pi * 2)
-    part.Parent      = debrisFolder
+    -- Orient upright relative to planet surface (UpVector = surfNormal)
+    -- Pick an arbitrary forward direction perpendicular to up
+    local up   = snapDir.Unit
+    local look = math.abs(up.Y) < 0.9 and Vector3.new(0,1,0) or Vector3.new(1,0,0)
+    look = (up:Cross(look)):Cross(up).Unit
+    local baseCF = CFrame.lookAt(surfPos, surfPos + look, up)
+    part.CFrame  = baseCF
+    part.Parent  = debrisFolder
 
     part:SetAttribute("IsFragment",   true)
     part:SetAttribute("FragmentType", fragType)
+
+    -- ── Beacon spotlight (Beam cone widening toward sky) ─────────────────────
+    local BEACON_H = 90
+
+    -- Invisible anchor Part at the top of the cone
+    local anchor     = Instance.new("Part")
+    anchor.Size        = Vector3.new(0.1, 0.1, 0.1)
+    anchor.CFrame      = CFrame.new(surfPos + up * BEACON_H)
+    anchor.Anchored    = true
+    anchor.CanCollide  = false
+    anchor.CanQuery    = false
+    anchor.Transparency = 1
+    anchor.CastShadow  = false
+    anchor.Parent      = debrisFolder
+
+    local att0 = Instance.new("Attachment"); att0.Parent = part
+    local att1 = Instance.new("Attachment"); att1.Parent = anchor
+
+    -- Core beam: visible light shaft, narrow at base, spreading upward
+    local beam = Instance.new("Beam")
+    beam.Attachment0 = att0; beam.Attachment1 = att1
+    beam.Width0 = 0.5;  beam.Width1 = 10
+    beam.LightEmission = 1; beam.LightInfluence = 0
+    beam.FaceCamera = true; beam.Segments = 1
+    beam.CurveSize0 = 0;  beam.CurveSize1 = 0
+    beam.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0,   cfg.color),
+        ColorSequenceKeypoint.new(0.6, cfg.color),
+        ColorSequenceKeypoint.new(1,   Color3.new(1, 1, 1)),
+    })
+    beam.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0,   0.2),
+        NumberSequenceKeypoint.new(0.5, 0.55),
+        NumberSequenceKeypoint.new(1,   1),
+    })
+    beam.Parent = workspace
+
+    -- Halo beam: much wider, very soft — gives the "fog" spread
+    local halo = Instance.new("Beam")
+    halo.Attachment0 = att0; halo.Attachment1 = att1
+    halo.Width0 = 3;  halo.Width1 = 28
+    halo.LightEmission = 1; halo.LightInfluence = 0
+    halo.FaceCamera = true; halo.Segments = 1
+    halo.CurveSize0 = 0;  halo.CurveSize1 = 0
+    halo.Color = ColorSequence.new(cfg.color)
+    halo.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0,   0.65),
+        NumberSequenceKeypoint.new(0.35, 0.82),
+        NumberSequenceKeypoint.new(1,   1),
+    })
+    halo.Parent = workspace
+
+    -- Particle attachment on the collectible
+    local pAtt = Instance.new("Attachment"); pAtt.Parent = part
+
+    -- Fast rising sparkles — bright, tight, travel the full column
+    local sparkles = Instance.new("ParticleEmitter")
+    sparkles.Texture        = "rbxasset://textures/particles/sparkles_main.dds"
+    sparkles.Color          = ColorSequence.new({
+        ColorSequenceKeypoint.new(0,   Color3.new(1, 1, 1)),
+        ColorSequenceKeypoint.new(0.3, cfg.color),
+        ColorSequenceKeypoint.new(1,   Color3.new(1, 1, 1)),
+    })
+    sparkles.LightEmission  = 1
+    sparkles.LightInfluence = 0
+    sparkles.Size           = NumberSequence.new({
+        NumberSequenceKeypoint.new(0,   0),
+        NumberSequenceKeypoint.new(0.12, 0.6),
+        NumberSequenceKeypoint.new(0.8,  0.3),
+        NumberSequenceKeypoint.new(1,   0),
+    })
+    sparkles.Transparency   = NumberSequence.new({
+        NumberSequenceKeypoint.new(0,   0),
+        NumberSequenceKeypoint.new(0.6, 0.3),
+        NumberSequenceKeypoint.new(1,   1),
+    })
+    sparkles.Speed          = NumberRange.new(14, 32)
+    sparkles.Lifetime       = NumberRange.new(2, 4.5)
+    sparkles.Rate           = 60
+    sparkles.SpreadAngle    = Vector2.new(5, 5)
+    sparkles.Rotation       = NumberRange.new(0, 360)
+    sparkles.RotSpeed       = NumberRange.new(-120, 120)
+    sparkles.EmissionDirection = Enum.NormalId.Top
+    sparkles.Parent         = pAtt
+
+    -- Slow smoke wisps — large, soft, organic fog drifting up
+    local wisps = Instance.new("ParticleEmitter")
+    wisps.Texture        = "rbxasset://textures/particles/smoke_main.dds"
+    wisps.Color          = ColorSequence.new({
+        ColorSequenceKeypoint.new(0,   cfg.color),
+        ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
+        ColorSequenceKeypoint.new(1,   cfg.color),
+    })
+    wisps.LightEmission  = 0.9
+    wisps.LightInfluence = 0.1
+    wisps.Size           = NumberSequence.new({
+        NumberSequenceKeypoint.new(0,   0),
+        NumberSequenceKeypoint.new(0.25, 1.8),
+        NumberSequenceKeypoint.new(1,   0),
+    })
+    wisps.Transparency   = NumberSequence.new({
+        NumberSequenceKeypoint.new(0,   0.3),
+        NumberSequenceKeypoint.new(0.5, 0.55),
+        NumberSequenceKeypoint.new(1,   1),
+    })
+    wisps.Speed          = NumberRange.new(3, 9)
+    wisps.Lifetime       = NumberRange.new(5, 10)
+    wisps.Rate           = 14
+    wisps.SpreadAngle    = Vector2.new(12, 12)
+    wisps.Rotation       = NumberRange.new(0, 360)
+    wisps.RotSpeed       = NumberRange.new(-25, 25)
+    wisps.EmissionDirection = Enum.NormalId.Top
+    wisps.Parent         = pAtt
+
+    -- SpotLight: casts colored light on terrain around the collectible
+    local spot = Instance.new("SpotLight")
+    spot.Face       = Enum.NormalId.Top
+    spot.Color      = cfg.color
+    spot.Brightness = 4
+    spot.Range      = 70
+    spot.Angle      = 44
+    spot.Parent     = part
+
+    -- Close saturated glow
+    local glow = Instance.new("PointLight")
+    glow.Color      = cfg.color
+    glow.Brightness = 4
+    glow.Range      = 22
+    glow.Parent     = part
+
+    -- Wide faint aura — visible from a distance
+    local aura = Instance.new("PointLight")
+    aura.Color      = cfg.color
+    aura.Brightness = 1
+    aura.Range      = 50
+    aura.Parent     = part
+
+    -- Register for spin loop (anchor + halo tracked for cleanup)
+    table.insert(spinParts, { part = part, beam = beam, halo = halo, anchor = anchor, up = up, baseCF = baseCF, angle = math.random() * math.pi * 2 })
 
     -- Roll quantity and track for proximity collection
     local qty   = pickQty()
@@ -160,14 +319,12 @@ local function spawnCollectible(position, fragType)
 
     registerCollectible:Fire(part, "Fragment", fragType)
 
-    -- Flash the part on spawn so players can spot it
+    -- Flash on spawn
     part.Transparency = 1
     local spawnLight = Instance.new("PointLight")
-    spawnLight.Color      = cfg.color
-    spawnLight.Brightness = 6
-    spawnLight.Range      = 22
-    spawnLight.Parent     = part
-    TweenService:Create(part,       TweenInfo.new(0.12), {Transparency = cfg.trans}):Play()
+    spawnLight.Color = cfg.color; spawnLight.Brightness = 8; spawnLight.Range = 30
+    spawnLight.Parent = part
+    TweenService:Create(part,       TweenInfo.new(0.15), {Transparency = cfg.trans}):Play()
     TweenService:Create(spawnLight, TweenInfo.new(0.5),  {Brightness = 0}):Play()
     task.delay(0.5, function()
         if spawnLight and spawnLight.Parent then spawnLight:Destroy() end
@@ -181,7 +338,10 @@ local function spawnCollectible(position, fragType)
         if not (part and part.Parent) then return end
         TweenService:Create(part, TweenInfo.new(2), {Transparency = 1}):Play()
         task.delay(2, function()
-            if part and part.Parent then part:Destroy() end
+            if part   and part.Parent   then part:Destroy()   end
+            if anchor and anchor.Parent then anchor:Destroy() end
+            if beam   and beam.Parent   then beam:Destroy()   end
+            if halo   and halo.Parent   then halo:Destroy()   end
         end)
     end)
 end
@@ -294,7 +454,7 @@ local function applyDamage(chunk, damage)
     if not chunk or not chunk.Parent then return end
     if not chunk:GetAttribute("IsDebris") then return end
 
-    local hp   = chunk:GetAttribute("Health") - damage
+    local hp   = (chunk:GetAttribute("Health") or 0) - damage
     local orig = chunk.Color
     chunk.Color = Color3.new(1, 1, 1)
     task.delay(0.06, function()
@@ -318,8 +478,18 @@ local function applyDamage(chunk, damage)
     end
 end
 
+-- Server-side dedup: ignore repeat events for the same chunk within 0.5s.
+-- Handles cases where the client fires twice (stale script connections, network
+-- batching, or both raycasts hitting the same target in one frame).
+local recentlyHit = {}
+
 -- Player laser (client → server)
 hitDebrisEvent.OnServerEvent:Connect(function(_player, chunk)
+    if not chunk or not chunk.Parent then return end
+    if not chunk:GetAttribute("IsDebris") then return end
+    if recentlyHit[chunk] then return end
+    recentlyHit[chunk] = true
+    task.delay(0.5, function() recentlyHit[chunk] = nil end)
     applyDamage(chunk, Config.LASER_DAMAGE)
 end)
 

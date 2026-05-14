@@ -559,8 +559,9 @@ function WorldGen.buildStorageRoom(cfg)
         { name="Gold",     color=Color3.fromRGB(220,170, 20) },
         { name="Titanium", color=Color3.fromRGB(155,175,200) },
     }
-    local BIN_W, BIN_D, BIN_H = 10, 10, 14
+    local BIN_W, BIN_D, BIN_H = 10, 10, 6
     local BIN_Y = ry + 3 + BIN_H/2   -- sitting on floor
+    local BIN_TOP = ry + 3 + BIN_H   -- top surface Y
 
     -- Bin positions: north wall (3), east wall (3), south wall (3)
     local binPositions = {
@@ -578,6 +579,45 @@ function WorldGen.buildStorageRoom(cfg)
         { x = rx - 28, z = rz + RD/2 - 9 },
     }
 
+    -- Material pile helpers
+    local METALS   = { Iron=true, Copper=true, Silver=true, Gold=true, Titanium=true, Metal=true }
+    local CHUNKS   = { Rock=true, Ice=true }
+    local CRYSTALS = { Crystal=true }
+
+    local function addPile(res, bx, bz)
+        local topY = BIN_TOP
+        if METALS[res.name] then
+            -- Stacked ingot bars
+            for row = 0, 2 do
+                local count = 3 - row
+                for c = 0, count - 1 do
+                    local ox = (c - (count-1)*0.5) * 2.2
+                    sp(Vector3.new(1.8, 0.7, 3.2),
+                        bx + ox, topY + 0.35 + row * 0.75, bz,
+                        res.color, Enum.Material.Metal, 0, false)
+                end
+            end
+        elseif CHUNKS[res.name] then
+            -- Rounded rubble mound
+            for _, off in ipairs({ {0,0,1.8}, {-1.6,0,0}, {1.6,0,0}, {0,0,-1.8}, {0,1.1,0} }) do
+                sp(Vector3.new(2.2, 2.2, 2.2),
+                    bx + off[1], topY + off[2] + 1.1, bz + off[3],
+                    res.color, Enum.Material.SmoothPlastic, 0, false)
+            end
+        elseif CRYSTALS[res.name] then
+            -- Spire cluster
+            for _, off in ipairs({ {0,0,0,3,5,3}, {-1.5,0,1.5,2,3.5,2}, {1.5,0,-1.5,1.5,4,1.5} }) do
+                local wedge = Instance.new("Part")
+                wedge.Size        = Vector3.new(off[4], off[5], off[6])
+                wedge.CFrame      = CFrame.new(bx+off[1], topY+off[5]/2, bz+off[3])
+                wedge.Anchored    = true; wedge.CanCollide = false
+                wedge.Material    = Enum.Material.Neon
+                wedge.Color       = res.color; wedge.Transparency = 0.2
+                wedge.Parent      = folder
+            end
+        end
+    end
+
     for i, res in ipairs(RESOURCES) do
         local bp = binPositions[i]
 
@@ -585,30 +625,41 @@ function WorldGen.buildStorageRoom(cfg)
         local body = sp(Vector3.new(BIN_W, BIN_H, BIN_D), bp.x, BIN_Y, bp.z,
             Color3.fromRGB(24, 28, 40), Enum.Material.Metal)
         body.Name = "Bin_" .. res.name
+        body:SetAttribute("Count", 0)
 
         -- Coloured indicator top (neon glow, resource colour)
-        local top = sp(Vector3.new(BIN_W, 0.4, BIN_D), bp.x, ry+3+BIN_H+0.2, bp.z,
+        local top = sp(Vector3.new(BIN_W, 0.4, BIN_D), bp.x, BIN_TOP + 0.2, bp.z,
             res.color, Enum.Material.Neon, 0.2, false)
         sl(top, res.color, 1.5, 12)
-
-        -- Dark recessed interior
-        sp(Vector3.new(BIN_W-1.5, 0.3, BIN_D-1.5), bp.x, ry+3+BIN_H-0.1, bp.z,
-            Color3.fromRGB(10, 12, 18), Enum.Material.SmoothPlastic, 0, false)
 
         -- Side accent stripe
         sp(Vector3.new(BIN_W+0.1, 0.5, 0.25), bp.x, BIN_Y + BIN_H*0.3, bp.z - BIN_D/2,
             res.color, Enum.Material.Neon, 0.4, false)
 
-        -- Label billboard
+        -- Material pile on top
+        addPile(res, bp.x, bp.z)
+
+        -- Label billboard: name + count
         local bb = Instance.new("BillboardGui")
-        bb.Size = UDim2.new(0, 130, 0, 38); bb.StudsOffset = Vector3.new(0, BIN_H/2 + 2.5, 0)
-        bb.AlwaysOnTop = false; bb.MaxDistance = 50; bb.Parent = body
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(1,0,1,0); lbl.BackgroundTransparency = 1
-        lbl.Text = res.name:upper(); lbl.Font = Enum.Font.GothamBold; lbl.TextSize = 15
-        lbl.TextColor3 = Color3.fromRGB(255,255,255)
-        lbl.TextStrokeColor3 = Color3.fromRGB(0,0,0); lbl.TextStrokeTransparency = 0.15
-        lbl.Parent = bb
+        bb.Size = UDim2.new(0, 140, 0, 50); bb.StudsOffset = Vector3.new(0, BIN_H/2 + 3.5, 0)
+        bb.AlwaysOnTop = false; bb.MaxDistance = 60; bb.Parent = body
+
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Name = "NameLabel"
+        nameLabel.Size = UDim2.new(1,0,0.55,0); nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = res.name:upper(); nameLabel.Font = Enum.Font.GothamBold; nameLabel.TextSize = 14
+        nameLabel.TextColor3 = Color3.fromRGB(255,255,255)
+        nameLabel.TextStrokeColor3 = Color3.fromRGB(0,0,0); nameLabel.TextStrokeTransparency = 0.15
+        nameLabel.Parent = bb
+
+        local countLabel = Instance.new("TextLabel")
+        countLabel.Name = "CountLabel"
+        countLabel.Size = UDim2.new(1,0,0.45,0); countLabel.Position = UDim2.new(0,0,0.55,0)
+        countLabel.BackgroundTransparency = 1
+        countLabel.Text = "× 0"; countLabel.Font = Enum.Font.GothamBold; countLabel.TextSize = 13
+        countLabel.TextColor3 = res.color
+        countLabel.TextStrokeColor3 = Color3.fromRGB(0,0,0); countLabel.TextStrokeTransparency = 0.15
+        countLabel.Parent = bb
     end
 
     print("[WorldGen] Storage room built")

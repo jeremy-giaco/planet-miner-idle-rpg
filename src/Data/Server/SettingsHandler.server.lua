@@ -2,6 +2,8 @@
 -- Pushes saved settings to the client on join.
 -- Listens for SaveSettings remote to persist changes.
 if not game:GetService("RunService"):IsServer() then return end
+if _G._SettingsHandlerActive then return end
+_G._SettingsHandlerActive = true
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

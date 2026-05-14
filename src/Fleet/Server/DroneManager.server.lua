@@ -468,6 +468,21 @@ local function deliverCargo(drone)
             addMetal(player, drone.cargo.name)
         end
     end
+    -- Update bin count display
+    local storageRoom = workspace:FindFirstChild("StorageRoom")
+    if storageRoom and drone.cargo then
+        local bin = storageRoom:FindFirstChild("Bin_" .. drone.cargo.name)
+        if bin then
+            local count = (bin:GetAttribute("Count") or 0) + 1
+            bin:SetAttribute("Count", count)
+            local bb = bin:FindFirstChildOfClass("BillboardGui")
+            if bb then
+                local cl = bb:FindFirstChild("CountLabel")
+                if cl then cl.Text = "× " .. count end
+            end
+        end
+    end
+
     drone.cargo = nil
     setCargoLight(drone, false)
 end

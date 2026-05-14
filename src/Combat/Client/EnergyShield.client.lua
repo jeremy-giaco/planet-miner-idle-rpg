@@ -13,11 +13,12 @@ local TweenService      = game:GetService("TweenService")
 local tool   = script.Parent
 local player = Players.LocalPlayer
 
-local SHIELD_RADIUS   = 5     -- studs — bubble size
+local SHIELD_RADIUS   = 8     -- studs — bubble size
 local ENERGY_MAX      = 100
-local ENERGY_DRAIN    = 22    -- per debris chunk destroyed
-local RECHARGE_RATE   = 12    -- energy per second while unequipped
-local SHOOT_INTERVAL  = 0.12  -- seconds between auto-shots
+local ENERGY_DRAIN    = 6     -- per debris chunk destroyed (~16 kills per charge)
+local RECHARGE_RATE   = 20    -- energy per second while unequipped
+local SHOOT_INTERVAL  = 0.08  -- seconds between scan ticks
+local MAX_HITS_PER_TICK = 3   -- chunks destroyed per tick (handles clusters)
 
 local SHIELD_COLOR = Color3.fromRGB(80, 200, 255)
 local HIT_COLOR    = Color3.fromRGB(255, 100, 100)
@@ -63,7 +64,7 @@ local function buildBubble()
     shieldParts = {}
     outerSphere = makeSphere(SHIELD_RADIUS,
         SHIELD_COLOR, 0.80)
-    innerSphere = makeSphere(SHIELD_RADIUS - 1.5,
+    innerSphere = makeSphere(SHIELD_RADIUS - 2,
         Color3.fromRGB(120, 220, 255), 0.93)
 
     shieldLight = Instance.new("PointLight")
@@ -217,7 +218,9 @@ local function update(dt)
     if not debrisFolder then return end
 
     local pos = hrp.Position
+    local hits = 0
     for _, chunk in ipairs(debrisFolder:GetChildren()) do
+        if hits >= MAX_HITS_PER_TICK then break end
         if not chunk:GetAttribute("IsDebris") then continue end
         local chunkPos
         if chunk:IsA("BasePart") then
@@ -231,19 +234,20 @@ local function update(dt)
             local contactDist = SHIELD_RADIUS + approxSize * 0.5
             if (chunkPos - pos).Magnitude < contactDist then
                 hitDebrisEvent:FireServer(chunk)
-                if not chunk.Anchored then
-                    energy = math.max(0, energy - ENERGY_DRAIN)
-                    updateEnergyUI()
-                    flashShield()
-                end
-                shootTimer = SHOOT_INTERVAL
+                hits += 1
+                energy = math.max(0, energy - ENERGY_DRAIN)
+                updateEnergyUI()
+                flashShield()
                 if energy <= 0 then
+                    shootTimer = SHOOT_INTERVAL
                     deactivate()
                     return
                 end
-                break  -- one target per interval
             end
         end
+    end
+    if hits > 0 then
+        shootTimer = SHOOT_INTERVAL
     end
 end
 

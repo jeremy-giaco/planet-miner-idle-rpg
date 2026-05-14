@@ -189,7 +189,7 @@ end
 
 -- ── Run ──────────────────────────────────────────────────────────────────────
 
-workspace.Gravity = 60   -- standard-ish, works fine at the north pole
+workspace.Gravity = 196.2   -- default Roblox gravity; jetpack handles upward thrust separately
 
 pcall(function() workspace.Terrain:Clear() end)
 local bp = workspace:FindFirstChild("Baseplate")

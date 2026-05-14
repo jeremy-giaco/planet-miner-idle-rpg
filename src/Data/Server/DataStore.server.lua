@@ -2,6 +2,9 @@
 -- Handles all player data persistence via Roblox DataStoreService.
 -- Exposes a PlayerData module to other server scripts via _G.PlayerData.
 if not game:GetService("RunService"):IsServer() then return end
+-- Prevent a second instance (Studio user_src mirror) from running and
+-- overwriting _G.PlayerData / saving a stale cache over the real one.
+if _G.PlayerData then return end
 
 local DataStoreService  = game:GetService("DataStoreService")
 local Players           = game:GetService("Players")
@@ -149,15 +152,15 @@ Players.PlayerAdded:Connect(function(player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-    saveData(player)
+    saveData(player)   -- yields until SetAsync completes
+    print("[DataStore] Saved data for", player.Name)
     cache[player] = nil
-    print("[DataStore] Saved and cleared data for", player.Name)
 end)
 
--- Auto-save all players every 60 seconds
+-- Auto-save all players every 30 seconds
 task.spawn(function()
     while true do
-        task.wait(60)
+        task.wait(30)
         for player, _ in pairs(cache) do
             if player and player.Parent then
                 saveData(player)
@@ -166,10 +169,22 @@ task.spawn(function()
     end
 end)
 
--- Save all on server shutdown
+-- Save all on server shutdown — run in parallel and WAIT for completion
+-- so Studio shutdown doesn't cut off SetAsync calls mid-write
 game:BindToClose(function()
+    local pending = 0
     for player, _ in pairs(cache) do
-        saveData(player)
+        pending += 1
+        task.spawn(function()
+            saveData(player)
+            pending -= 1
+        end)
+    end
+    -- Yield until all saves finish (or 10s safety timeout)
+    local t = 0
+    while pending > 0 and t < 10 do
+        task.wait(0.1)
+        t += 0.1
     end
 end)
 

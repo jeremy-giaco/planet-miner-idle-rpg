@@ -5,7 +5,8 @@ if not game:GetService("RunService"):IsClient() then return end
 
 local Players           = game:GetService("Players")
 local StarterGui        = game:GetService("StarterGui")
-local UserInputService  = game:GetService("UserInputService")
+local UserInputService      = game:GetService("UserInputService")
+local ContextActionService  = game:GetService("ContextActionService")
 local RunService        = game:GetService("RunService")
 
 local player    = Players.LocalPlayer
@@ -230,20 +231,30 @@ local function updateHighlight()
 end
 
 -- ── Keyboard shortcuts (1-9) ──────────────────────────────────────────────────
+-- Use ContextActionService at high priority so we sink the input before
+-- Roblox's internal backpack handler (which steals key 1 even when the
+-- backpack CoreGui is disabled).
 
-local keyMap = {
-    [Enum.KeyCode.One]   = 1, [Enum.KeyCode.Two]   = 2, [Enum.KeyCode.Three] = 3,
-    [Enum.KeyCode.Four]  = 4, [Enum.KeyCode.Five]  = 5, [Enum.KeyCode.Six]   = 6,
-    [Enum.KeyCode.Seven] = 7, [Enum.KeyCode.Eight] = 8, [Enum.KeyCode.Nine]  = 9,
+local SLOT_KEYS = {
+    Enum.KeyCode.One, Enum.KeyCode.Two,   Enum.KeyCode.Three,
+    Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six,
+    Enum.KeyCode.Seven, Enum.KeyCode.Eight, Enum.KeyCode.Nine,
 }
 
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    local idx = keyMap[input.KeyCode]
-    if idx and slots[idx] then
-        equipTool(slots[idx].toolName)
-    end
-end)
+for i, keyCode in ipairs(SLOT_KEYS) do
+    ContextActionService:BindActionAtPriority(
+        "HotbarSlot" .. i,
+        function(_, state, _input)
+            if state == Enum.UserInputState.Begin then
+                if slots[i] then equipTool(slots[i].toolName) end
+            end
+            return Enum.ContextActionResult.Sink
+        end,
+        false,   -- no touch button
+        3000,    -- above Roblox's default backpack priority (~2000)
+        keyCode
+    )
+end
 
 -- ── Watch for backpack / character changes ────────────────────────────────────
 

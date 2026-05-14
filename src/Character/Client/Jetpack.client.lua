@@ -16,8 +16,8 @@ local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 local torso     = character:WaitForChild("UpperTorso")
 
-local THRUST        = 140
-local MAX_UP_SPEED  = 90
+local THRUST        = 520    -- must exceed workspace.Gravity (196) to climb; 520 = strong lift
+local MAX_UP_SPEED  = 140   -- terminal ascent speed (studs/s)
 local JETPACK_DELAY = 0.3   -- seconds of held Space before jetpack fires (on ground)
 
 -- ── Jetpack model ─────────────────────────────────────────────────────────────

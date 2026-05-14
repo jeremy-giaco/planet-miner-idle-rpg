@@ -50,21 +50,8 @@ sg.IgnoreGuiInset = true
 sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 sg.Parent = playerGui
 
--- ── Backdrop — invisible full-screen button; click anywhere to close popups ───
-
-local backdrop = Instance.new("TextButton")
-backdrop.Name                   = "Backdrop"
-backdrop.Size                   = UDim2.new(1, 0, 1, 0)
-backdrop.BackgroundTransparency = 1
-backdrop.Text                   = ""
-backdrop.BorderSizePixel        = 0
-backdrop.ZIndex                 = 5   -- below popups (ZIndex 20) and buttons (ZIndex 15)
-backdrop.Visible                = false
-backdrop.Parent                 = sg
-
 local function closeAll()
-    backdrop.Visible = false
-    -- allCloseFns populated later; call via shared table
+    -- close all panels (called when opening a new one)
 end
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
@@ -169,12 +156,6 @@ end
 local allCloseFns = {}
 local allTabBtns  = {}
 
-backdrop.MouseButton1Click:Connect(function()
-    for _, fn in ipairs(allCloseFns) do fn() end
-    for _, b  in ipairs(allTabBtns)  do b.TextColor3 = Color3.fromRGB(255,255,255) end
-    backdrop.Visible = false
-end)
-
 local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
     table.insert(allCloseFns, closeFn)
 
@@ -211,15 +192,14 @@ local function makeTabBtn(icon, label, order, popup, toggleFn, closeFn)
     btn.MouseButton1Click:Connect(function()
         local opening = toggleFn()
         if opening then
+            -- Close other panels
             for _, fn in ipairs(allCloseFns) do
                 if fn ~= closeFn then fn() end
             end
             for _, b in ipairs(allTabBtns) do b.TextColor3 = Color3.fromRGB(255,255,255) end
-            btn.TextColor3  = Color3.fromRGB(255, 240, 100)
-            backdrop.Visible = true
+            btn.TextColor3 = Color3.fromRGB(255, 240, 100)
         else
-            btn.TextColor3   = Color3.fromRGB(255, 255, 255)
-            backdrop.Visible = false
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
     end)
 

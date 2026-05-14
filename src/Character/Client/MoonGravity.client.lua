@@ -15,7 +15,7 @@ local character = script.Parent
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 
-humanoid.WalkSpeed  = 28
+humanoid.WalkSpeed  = 48
 humanoid.AutoRotate = false   -- BodyGyro owns all rotation; prevents fight/shake
 
 -- BodyGyro keeps HRP upright AND facing movement direction

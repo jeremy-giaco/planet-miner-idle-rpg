@@ -1,5 +1,8 @@
 -- Script → ServerScriptService (CoinSystem renamed to MetalSystem internally)
 -- Spawns metal ore deposits on the moon surface. Rover and player can collect them.
+if not game:GetService("RunService"):IsServer() then return end
+if _G._CoinSystemActive then return end
+_G._CoinSystemActive = true
 local Workspace         = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
