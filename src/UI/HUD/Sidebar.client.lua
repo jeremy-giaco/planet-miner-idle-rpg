@@ -268,6 +268,7 @@ for i = 1, 6 do
 
     local fill=Instance.new("Frame")
     fill.Size=UDim2.new(1,0,1,0); fill.BackgroundColor3=MODE_FILL[init]
+    fill.BackgroundTransparency=0.35
     fill.BorderSizePixel=0; fill.ZIndex=btn.ZIndex+1; fill.Parent=btn
     corner(fill,4)
 
