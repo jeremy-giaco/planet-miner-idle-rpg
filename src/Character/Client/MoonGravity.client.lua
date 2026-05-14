@@ -15,32 +15,37 @@ local character = script.Parent
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 
-humanoid.WalkSpeed = 56
+humanoid.WalkSpeed  = 28
+humanoid.AutoRotate = false   -- BodyGyro owns all rotation; prevents fight/shake
 
--- BodyGyro keeps HRP upright relative to sphere surface (up = away from center)
-local bodyGyro         = Instance.new("BodyGyro")
-bodyGyro.MaxTorque     = Vector3.new(4e5, 4e5, 4e5)
-bodyGyro.P             = 3e4
-bodyGyro.D             = 500
-bodyGyro.CFrame        = CFrame.new()
-bodyGyro.Parent        = hrp
+-- BodyGyro keeps HRP upright AND facing movement direction
+local bodyGyro     = Instance.new("BodyGyro")
+bodyGyro.MaxTorque = Vector3.new(4e5, 4e5, 4e5)
+bodyGyro.P         = 2e4
+bodyGyro.D         = 400
+bodyGyro.CFrame    = CFrame.new()
+bodyGyro.Parent    = hrp
 
 RunService.Heartbeat:Connect(function()
     if not hrp.Parent then return end
     if character:FindFirstChild("InShip") then return end
 
-    -- Up vector = away from planet center
-    local up = (hrp.Position - PLANET_CENTER).Unit
+    local up      = (hrp.Position - PLANET_CENTER).Unit
+    local moveDir = humanoid.MoveDirection
 
-    -- Preserve horizontal facing: project current right vector onto plane ⊥ to up
-    local right = hrp.CFrame.RightVector
-    right = right - right:Dot(up) * up
-    if right.Magnitude < 0.01 then
-        -- fallback: use world X
-        right = Vector3.new(1, 0, 0) - Vector3.new(1, 0, 0):Dot(up) * up
+    -- Forward: face movement direction when moving, otherwise preserve current facing
+    local fwd
+    if moveDir.Magnitude > 0.1 then
+        fwd = moveDir - moveDir:Dot(up) * up
+    else
+        fwd = hrp.CFrame.LookVector
+        fwd = fwd - fwd:Dot(up) * up
     end
-    right = right.Unit
+    if fwd.Magnitude < 0.01 then
+        fwd = Vector3.new(0, 0, -1) - Vector3.new(0, 0, -1):Dot(up) * up
+    end
+    fwd = fwd.Unit
 
-    -- Build target orientation: right stays horizontal, up = sphere normal
-    bodyGyro.CFrame = CFrame.fromMatrix(Vector3.new(), right, up)
+    -- CFrame.lookAt: position at origin, look toward fwd, up = sphere normal
+    bodyGyro.CFrame = CFrame.lookAt(Vector3.zero, fwd, up)
 end)

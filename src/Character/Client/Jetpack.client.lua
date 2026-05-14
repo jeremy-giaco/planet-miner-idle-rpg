@@ -16,8 +16,9 @@ local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 local torso     = character:WaitForChild("UpperTorso")
 
-local THRUST       = 140
-local MAX_UP_SPEED = 90
+local THRUST        = 140
+local MAX_UP_SPEED  = 90
+local JETPACK_DELAY = 0.3   -- seconds of held Space before jetpack fires (on ground)
 
 -- ── Jetpack model ─────────────────────────────────────────────────────────────
 
@@ -115,35 +116,56 @@ end
 
 -- ── Thrust logic ─────────────────────────────────────────────────────────────
 
-local thrusting = false
+local thrusting    = false
+local spaceHeld    = 0   -- seconds Space has been held this press
+
+-- Tap Space on ground → jump; hold Space → jetpack after JETPACK_DELAY
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode ~= Enum.KeyCode.Space then return end
+    if character:FindFirstChild("InShip") then return end
+    if humanoid.FloorMaterial ~= Enum.Material.Air then
+        humanoid.Jump = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Space then
+        spaceHeld = 0
+    end
+end)
 
 RunService.Heartbeat:Connect(function(dt)
     if humanoid.Health <= 0 then return end
     if character:FindFirstChild("InShip") then
-        -- hide particles when in ship
         for _, p in ipairs(exhaustParts) do p.Rate = 0 end
         return
     end
 
     local isThrustKey = UserInputService:IsKeyDown(Enum.KeyCode.Space)
 
-    -- Mobile: check rise button from VirtualJoystick if available
-    -- (sticks.rise() returns true when the ▲ button is held)
-
     if isThrustKey then
-        local upDir  = (hrp.Position - PLANET_CENTER).Unit
-        local vel    = hrp.AssemblyLinearVelocity
-        local upSpeed = vel:Dot(upDir)
-        if upSpeed < MAX_UP_SPEED then
-            local boost = math.min(THRUST * dt, MAX_UP_SPEED - upSpeed)
-            hrp.AssemblyLinearVelocity = vel + upDir * boost
-        end
-        if not thrusting then
-            thrusting = true
-            for _, p in ipairs(exhaustParts) do p.Rate = 120 end
-            stripLight.Brightness = 6
+        spaceHeld = spaceHeld + dt
+        local onGround = humanoid.FloorMaterial ~= Enum.Material.Air
+        -- On ground: wait for hold delay before firing. In air: fire immediately.
+        local shouldThrust = (not onGround) or (spaceHeld >= JETPACK_DELAY)
+
+        if shouldThrust then
+            local upDir   = (hrp.Position - PLANET_CENTER).Unit
+            local vel     = hrp.AssemblyLinearVelocity
+            local upSpeed = vel:Dot(upDir)
+            if upSpeed < MAX_UP_SPEED then
+                local boost = math.min(THRUST * dt, MAX_UP_SPEED - upSpeed)
+                hrp.AssemblyLinearVelocity = vel + upDir * boost
+            end
+            if not thrusting then
+                thrusting = true
+                for _, p in ipairs(exhaustParts) do p.Rate = 120 end
+                stripLight.Brightness = 6
+            end
         end
     else
+        spaceHeld = 0
         if thrusting then
             thrusting = false
             for _, p in ipairs(exhaustParts) do p.Rate = 0 end
