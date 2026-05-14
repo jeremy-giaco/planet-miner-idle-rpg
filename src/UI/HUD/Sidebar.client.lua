@@ -26,10 +26,10 @@ local isMobile = UserInputService.TouchEnabled and not UserInputService.Keyboard
 
 local BG    = Color3.fromRGB(10, 6, 28)
 local NEON  = Color3.fromRGB(100, 60, 240)
-local TEXT  = Color3.fromRGB(220, 210, 255)
-local DIM   = Color3.fromRGB(150, 135, 185)
+local TEXT  = Color3.fromRGB(235, 225, 255)
+local DIM   = Color3.fromRGB(190, 175, 225)
 local SEL   = Color3.fromRGB(90, 55, 200)
-local UNSEL = Color3.fromRGB(30, 22, 65)
+local UNSEL = Color3.fromRGB(45, 32, 90)
 local ALPHA = 0.0   -- popups fully opaque for readability
 
 local ROW_H          = 26
@@ -255,8 +255,8 @@ for i = 1, 6 do
 
     local lbl=Instance.new("TextLabel")
     lbl.Text=tostring(i); lbl.Size=UDim2.new(0,14,1,0)
-    lbl.BackgroundTransparency=1; lbl.TextColor3=DIM
-    lbl.TextSize=9; lbl.Font=Enum.Font.GothamBold; lbl.Parent=row
+    lbl.BackgroundTransparency=1; lbl.TextColor3=TEXT
+    lbl.TextSize=12; lbl.Font=Enum.Font.GothamBold; lbl.Parent=row
 
     local btn=Instance.new("TextButton")
     btn.Name="ModeBtn"; btn.Size=UDim2.new(1,-18,1,-2)
@@ -272,8 +272,8 @@ for i = 1, 6 do
 
     local mt=Instance.new("TextLabel")
     mt.Text=MODE_LABEL[init]; mt.Size=UDim2.new(1,0,1,0)
-    mt.BackgroundTransparency=1; mt.TextColor3=Color3.new(0,0,0)
-    mt.TextSize=9; mt.Font=Enum.Font.GothamBold
+    mt.BackgroundTransparency=1; mt.TextColor3=Color3.new(1,1,1)
+    mt.TextSize=11; mt.Font=Enum.Font.GothamBold
     mt.ZIndex=fill.ZIndex+1; mt.Parent=btn
 
     healthFills[i]=fill; modeLabels[i]=mt; modeBtns[i]=btn
@@ -304,7 +304,7 @@ droneHealthEvent.OnClientEvent:Connect(function(idx,health,maxHealth,alive)
         fill.Size=UDim2.new(math.clamp(health/(maxHealth or 100),0,1),0,1,0)
         local mode=droneMode[idx]
         fill.BackgroundColor3=MODE_FILL[mode]; btn.BackgroundColor3=MODE_BG[mode]
-        mt.Text=MODE_LABEL[mode]; mt.TextColor3=Color3.new(0,0,0)
+        mt.Text=MODE_LABEL[mode]; mt.TextColor3=Color3.new(1,1,1)
     end
 end)
 
@@ -353,7 +353,7 @@ for order, def in ipairs(RESOURCE_DEFS) do
     name.Text=def.label; name.Size=UDim2.new(0.65,0,1,0)
     name.Position=UDim2.new(0,16,0,0)
     name.BackgroundTransparency=1; name.TextColor3=TEXT
-    name.TextSize=10; name.Font=Enum.Font.Gotham
+    name.TextSize=12; name.Font=Enum.Font.Gotham
     name.TextXAlignment=Enum.TextXAlignment.Left; name.Parent=row
 
     -- Qty (right-aligned)
@@ -361,7 +361,7 @@ for order, def in ipairs(RESOURCE_DEFS) do
     qty.Name="Qty"; qty.Text="0"; qty.Size=UDim2.new(0.3,0,1,0)
     qty.Position=UDim2.new(0.7,0,0,0)
     qty.BackgroundTransparency=1; qty.TextColor3=DIM
-    qty.TextSize=10; qty.Font=Enum.Font.GothamBold
+    qty.TextSize=12; qty.Font=Enum.Font.GothamBold
     qty.TextXAlignment=Enum.TextXAlignment.Right; qty.Parent=row
 
     qtyLabels[def.key] = qty
@@ -439,7 +439,7 @@ local function oRow(options, currentKey, order, onSelect)
         local btn=Instance.new("TextButton")
         btn.Size=UDim2.new(1/#options,-3,1,0)
         btn.BackgroundColor3=(opt.key==currentKey) and SEL or UNSEL
-        btn.Text=opt.label; btn.TextSize=10; btn.Font=Enum.Font.GothamBold
+        btn.Text=opt.label; btn.TextSize=12; btn.Font=Enum.Font.GothamBold
         btn.TextColor3=Color3.new(1,1,1); btn.BorderSizePixel=0
         btn.AutoButtonColor=false; btn.Parent=c
         corner(btn,4)
@@ -455,7 +455,7 @@ local function sLbl(text,order)
     local l=Instance.new("TextLabel")
     l.Text=text; l.Size=UDim2.new(1,0,0,14)
     l.BackgroundTransparency=1; l.TextColor3=DIM
-    l.TextSize=9; l.Font=Enum.Font.GothamBold
+    l.TextSize=11; l.Font=Enum.Font.GothamBold
     l.TextXAlignment=Enum.TextXAlignment.Left
     l.LayoutOrder=order; l.Parent=settingsScroll
 end
@@ -467,12 +467,12 @@ local function tRow(label,currentVal,order,onToggle)
     local lbl=Instance.new("TextLabel")
     lbl.Text=label; lbl.Size=UDim2.new(0.6,0,1,0)
     lbl.BackgroundTransparency=1; lbl.TextColor3=TEXT
-    lbl.TextSize=10; lbl.Font=Enum.Font.Gotham
+    lbl.TextSize=12; lbl.Font=Enum.Font.Gotham
     lbl.TextXAlignment=Enum.TextXAlignment.Left; lbl.Parent=c
     local btn=Instance.new("TextButton")
     btn.Size=UDim2.new(0,46,0,ROW_H-2); btn.Position=UDim2.new(1,-46,0.5,-(ROW_H-2)/2)
     btn.BackgroundColor3=currentVal and Color3.fromRGB(0,170,70) or Color3.fromRGB(80,30,30)
-    btn.Text=currentVal and "ON" or "OFF"; btn.TextSize=10; btn.Font=Enum.Font.GothamBold
+    btn.Text=currentVal and "ON" or "OFF"; btn.TextSize=12; btn.Font=Enum.Font.GothamBold
     btn.TextColor3=Color3.new(1,1,1); btn.BorderSizePixel=0; btn.AutoButtonColor=false; btn.Parent=c
     corner(btn,4)
     local state=currentVal
