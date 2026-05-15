@@ -380,17 +380,50 @@ end
 
 -- ── Chunk builder ────────────────────────────────────────────────────────────
 
+-- Weighted shape table: mostly jagged rocks, occasional round/cylindrical
+local CHUNK_SHAPES = {
+    { shape = Enum.PartType.Block,       weight = 30 },  -- rectangular slab
+    { shape = Enum.PartType.Wedge,       weight = 25 },  -- angular shard
+    { shape = Enum.PartType.CornerWedge, weight = 20 },  -- corner chip
+    { shape = Enum.PartType.Cylinder,    weight = 15 },  -- columnar rock
+    { shape = Enum.PartType.Ball,        weight = 10 },  -- rounded boulder
+}
+local _shapeTotal = 0
+for _, s in ipairs(CHUNK_SHAPES) do _shapeTotal += s.weight end
+
+local function pickShape()
+    local r, cum = math.random() * _shapeTotal, 0
+    for _, s in ipairs(CHUNK_SHAPES) do
+        cum += s.weight
+        if r <= cum then return s.shape end
+    end
+    return Enum.PartType.Block
+end
+
 local function makeChunk(pos, size, color, health, fragType)
     local chunk = Instance.new("Part")
     chunk.Name     = "DebrisChunk"
-    chunk.Shape    = Enum.PartType.Block
-    chunk.Size     = Vector3.new(size, size, size)
-    chunk.Position = pos
+    chunk.Shape    = pickShape()
+
+    -- Irregular dimensions: stretch or squash each axis independently
+    -- so chunks look like broken rock rather than perfect cubes/spheres
+    local sx = size * (0.6 + math.random() * 0.9)
+    local sy = size * (0.5 + math.random() * 0.8)
+    local sz = size * (0.6 + math.random() * 0.9)
+    chunk.Size     = Vector3.new(sx, sy, sz)
+
+    -- Random tumble orientation so wedges/slabs land at different angles
+    chunk.CFrame   = CFrame.new(pos) * CFrame.Angles(
+        math.random() * math.pi * 2,
+        math.random() * math.pi * 2,
+        math.random() * math.pi * 2
+    )
+
     chunk.Color    = color
     chunk.Material = pick(DEBRIS_MATERIALS)
     chunk.CustomPhysicalProperties = PhysicalProperties.new(1, 2, 0, 1, 1)
     chunk.CanCollide = true
-    pcall(function() chunk.CollisionGroup = "Debris" end)  -- no debris-debris collisions
+    pcall(function() chunk.CollisionGroup = "Debris" end)
     chunk.Parent   = debrisFolder
 
     chunk:SetAttribute("IsDebris",  true)
