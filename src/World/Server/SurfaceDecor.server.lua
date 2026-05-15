@@ -84,6 +84,17 @@ local function placeModel(model, phi, theta, minSize, maxSize, heroChance, heroM
     local tiltDir = rn(0, math.pi * 2)
     local yaw     = rn(0, math.pi * 2)
 
+    -- Safety check — if model is still gigantic after scaling, abort
+    if clone:IsA("Model") then
+        local ok, _, size = pcall(function() return clone:GetBoundingBox() end)
+        if ok and size then
+            if math.max(size.X, size.Y, size.Z) > 150 then
+                clone:Destroy()
+                return
+            end
+        end
+    end
+
     local embedDepth = 2
     if clone:IsA("Model") then
         local ok, _, size = pcall(function() return clone:GetBoundingBox() end)
@@ -118,7 +129,7 @@ local ROCKS = {}   -- boulders/asteroids scattered everywhere
 local GEMS  = {}   -- crystal/gem ore deposits
 local FLORA = {}   -- alien plants
 local LAVA  = {}   -- lava pools (decorative)
-local SKIP  = { Particles = true, Water = true }
+local SKIP  = { Particles = true, Water = true, water = true }
 
 local GEM_NAMES = {
     ["shadow gem"]=true, ["CrystalBlue"]=true, ["CrystalGreen"]=true,
