@@ -17,6 +17,7 @@ local hrp       = character:WaitForChild("HumanoidRootPart")
 
 humanoid.WalkSpeed  = 48
 humanoid.AutoRotate = false   -- BodyGyro owns all rotation; prevents fight/shake
+humanoid.HipHeight  = 0       -- sink feet to actual ground surface (default 1.35 causes floating)
 
 -- BodyGyro keeps HRP upright AND facing movement direction
 local bodyGyro     = Instance.new("BodyGyro")
