@@ -48,17 +48,43 @@ local function surfCF(phi, theta, heightAbove, yaw)
     return CFrame.fromMatrix(pos, r, n, -f) * CFrame.Angles(0, yaw or 0, 0)
 end
 
--- Anchor all BaseParts in a model and strip scripts
+-- Strip all scripts, sounds, particles, lights, and anchor all parts
 local function finalizeModel(model)
+    local toRemove = {}
     for _, d in ipairs(model:GetDescendants()) do
         if d:IsA("BasePart") then
             d.Anchored   = true
             d.CanCollide = true
             d.CastShadow = false
-        elseif d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
-            d:Destroy()
+        elseif d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript")
+            or d:IsA("ParticleEmitter") or d:IsA("Trail") or d:IsA("Beam")
+            or d:IsA("Sound") or d:IsA("PointLight") or d:IsA("SpotLight")
+            or d:IsA("SurfaceLight") or d:IsA("SelectionBox") or d:IsA("BillboardGui")
+            or d:IsA("ScreenGui") or d:IsA("Attachment") then
+            table.insert(toRemove, d)
         end
     end
+    for _, d in ipairs(toRemove) do
+        pcall(function() d:Destroy() end)
+    end
+end
+
+-- Normalize a model to fit within targetSize studs on its longest axis
+local TARGET_MIN = 8    -- smallest rocks ~8 studs
+local TARGET_MAX = 35   -- biggest boulders ~35 studs
+
+local function normalizeScale(model)
+    if not model:IsA("Model") then return end
+    local ok, cf, size = pcall(function() return model:GetBoundingBox() end)
+    if not ok or not size then return end
+    local longest = math.max(size.X, size.Y, size.Z)
+    if longest <= 0 then return end
+    -- Pick a random target size in our range
+    local target = rn(TARGET_MIN, TARGET_MAX)
+    -- 8% chance of a large hero boulder
+    if rng:NextNumber() < 0.08 then target = rn(40, 80) end
+    local scaleFactor = target / longest
+    pcall(function() model:ScaleTo(scaleFactor) end)
 end
 
 -- ── Load templates from ReplicatedStorage ────────────────────────────────────
@@ -84,48 +110,37 @@ local SCATTER_COUNT = 300   -- total rocks/boulders across the surface
 local function placeOne()
     local phi, theta = rpos()
 
-    -- Random scale: most are small, occasional large boulders
-    local scale = rn(0.3, 1.0)
-    if rng:NextNumber() < 0.08 then scale = rn(1.5, 3.5) end  -- 8% chance big boulder
-
-    -- Random lean/tilt — looks like it landed or grew from rock
-    local tilt = rn(0, 0.35)
+    -- Random lean/tilt — looks like it landed or settled naturally
+    local tilt    = rn(0, 0.3)
     local tiltDir = rn(0, math.pi * 2)
-    local yaw = rn(0, math.pi * 2)
-
-    -- Sink slightly into surface so it looks embedded, not floating
-    local embed = -scale * rn(0.1, 0.4)
-
-    local cf = surfCF(phi, theta, embed, yaw)
-             * CFrame.Angles(tilt * math.cos(tiltDir), 0, tilt * math.sin(tiltDir))
+    local yaw     = rn(0, math.pi * 2)
 
     local template = templates[ri(1, #templates)]
-    local model = template:Clone()
+    local model    = template:Clone()
 
-    -- Scale uniformly
+    -- Normalize to a consistent size range before placing
+    normalizeScale(model)
+
+    -- Get bounding box after scaling to compute embed depth
+    local embedDepth = 2
     if model:IsA("Model") then
-        local ok = pcall(function() model:ScaleTo(scale) end)
-        if not ok then
-            -- Fallback: scale each part manually
-            for _, p in ipairs(model:GetDescendants()) do
-                if p:IsA("BasePart") then
-                    p.Size = p.Size * scale
-                end
-            end
+        local ok, _, size = pcall(function() return model:GetBoundingBox() end)
+        if ok and size then
+            embedDepth = math.max(size.Y * rn(0.1, 0.3), 1)
         end
+    end
+
+    local cf = surfCF(phi, theta, -embedDepth, yaw)
+             * CFrame.Angles(tilt * math.cos(tiltDir), 0, tilt * math.sin(tiltDir))
+
+    if model:IsA("Model") then
         finalizeModel(model)
         model:PivotTo(cf)
     else
-        -- Single part (MeshPart / Part)
-        model.Size    = model.Size * scale
-        model.CFrame  = cf
+        model.CFrame     = cf
         model.Anchored   = true
         model.CanCollide = true
         model.CastShadow = false
-        if model:IsA("Script") or model:IsA("LocalScript") then
-            model:Destroy()
-            return
-        end
     end
 
     model.Parent = folder
