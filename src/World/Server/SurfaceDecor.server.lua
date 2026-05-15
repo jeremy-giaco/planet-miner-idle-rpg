@@ -1,7 +1,7 @@
 -- World/Server/SurfaceDecor.server.lua
--- Volcanic alien planet surface features, inspired by:
---   jagged rocky spire clusters, glowing lava rivers, dark basalt ridges,
---   bioluminescent alien flora peeking through the rock.
+-- Alien moon surface features: jagged rocky spire clusters, glowing lava
+--   rivers, dark slate ridges, bioluminescent flora peeking through the rock.
+--   Uses Roblox PBR materials (Rock, Slate, Granite, Grass, LeafyGrass).
 --
 -- Fixed seed = consistent layout every run.
 
@@ -36,7 +36,7 @@ local function part(size, cf, color, mat, trans, collide)
     p.CanCollide   = collide ~= false
     p.CastShadow   = false
     p.Color        = color
-    p.Material     = mat or Enum.Material.Basalt
+    p.Material     = mat or Enum.Material.Rock
     p.Transparency = trans or 0
     p.Parent       = folder
     return p
@@ -76,15 +76,15 @@ end
 -- This is the hero feature of the volcanic landscape.
 
 local SPIRE_DARK = {
-    Color3.fromRGB(30, 18, 12),
-    Color3.fromRGB(42, 25, 16),
-    Color3.fromRGB(22, 14,  9),
-    Color3.fromRGB(55, 32, 20),
+    Color3.fromRGB(75,  72,  82),   -- dark grey slate
+    Color3.fromRGB(60,  58,  68),   -- charcoal granite
+    Color3.fromRGB(90,  85,  95),   -- dusty purple-grey
+    Color3.fromRGB(50,  52,  60),   -- deep blue-grey
 }
 local SPIRE_MID = {
-    Color3.fromRGB(70, 40, 25),
-    Color3.fromRGB(85, 50, 30),
-    Color3.fromRGB(60, 35, 20),
+    Color3.fromRGB(120, 118, 130),  -- medium grey granite
+    Color3.fromRGB(110, 108, 120),  -- cool grey
+    Color3.fromRGB(135, 130, 140),  -- light slate
 }
 
 local function makeSpireCluster(phi, theta)
@@ -117,7 +117,7 @@ local function makeSpireCluster(phi, theta)
                 * CFrame.Angles(lean * math.cos(leanDir), rn(-0.08, 0.08),
                                 lean * math.sin(leanDir))
             -- Alternate between Wedge and Block for irregular silhouette
-            local p = part(Vector3.new(w, segH + 0.2, w * rn(0.7, 1.3)), cf, col)
+            local p = part(Vector3.new(w, segH + 0.2, w * rn(0.7, 1.3)), cf, col, Enum.Material.Rock)
             if ri(1,3) == 1 then p.Shape = Enum.PartType.Wedge end
         end
 
@@ -138,7 +138,7 @@ local function makeSpireCluster(phi, theta)
         local rw = rn(2, 6); local rh = rn(1, 3)
         local rcf = base * CFrame.new(rx, rh * 0.3, rz)
                          * CFrame.Angles(rn(-0.3,0.3), rn(0,math.pi), rn(-0.2,0.2))
-        part(Vector3.new(rw, rh, rw * rn(0.5,1.5)), rcf, SPIRE_DARK[ri(1,#SPIRE_DARK)])
+        part(Vector3.new(rw, rh, rw * rn(0.5,1.5)), rcf, SPIRE_DARK[ri(1,#SPIRE_DARK)], Enum.Material.Rock)
     end
 end
 
@@ -238,7 +238,7 @@ local function makeLavaPool(phi, theta)
         local cf = rimBase
             * CFrame.new(math.cos(a)*d, rh*0.3, math.sin(a)*d)
             * CFrame.Angles(rn(-0.2,0.2), a, rn(-0.1,0.1))
-        part(Vector3.new(rw, rh, rw*0.6), cf, Color3.fromRGB(28, 16, 10))
+        part(Vector3.new(rw, rh, rw*0.6), cf, Color3.fromRGB(70, 66, 78), Enum.Material.Slate)
     end
 
     -- Embers
@@ -278,7 +278,7 @@ local function makeRidge(phi, theta)
         local col = SPIRE_DARK[ri(1, #SPIRE_DARK)]
         local cf  = base * CFrame.new(ox, h * 0.3, rn(-3, 3))
                          * CFrame.Angles(rn(-0.15,0.15), rn(-0.1,0.1), rn(-0.1,0.1))
-        part(Vector3.new(len / segs + 2, h, w), cf, col)
+        part(Vector3.new(len / segs + 2, h, w), cf, col, Enum.Material.Slate)
     end
 end
 
@@ -323,7 +323,7 @@ local function makeMushroom(base)
         local sw = stemW * (1 + (1 - t) * 0.5)   -- wider at bottom
         part(Vector3.new(sw, stemH/3 + 0.1, sw),
             base * CFrame.new(0, stemH * (s-1)/3 + stemH/6, 0),
-            sc, Enum.Material.SmoothPlastic)
+            sc, Enum.Material.LeafyGrass)
     end
     -- Cap — flat ball, drooping at edges via wedges
     local capCF = base * CFrame.new(0, stemH + capH * 0.3, 0)
@@ -340,7 +340,7 @@ local function makeMushroom(base)
             * CFrame.Angles(0, ang, 0)
             * CFrame.new(capR * 0.45, 0, 0)
             * CFrame.Angles(0, 0, math.rad(rn(20, 45)))   -- droop outward
-        part(Vector3.new(fw, fh, fw * 0.35), cf, cc, Enum.Material.SmoothPlastic)
+        part(Vector3.new(fw, fh, fw * 0.35), cf, cc, Enum.Material.Neon)
     end
     -- Soft underglow
     glow(cap, cc, 0.8, capR * 5)
@@ -372,7 +372,7 @@ local function makeTentacleVine(base)
                 * CFrame.Angles(lean * math.cos(curveDir), rn(-0.05,0.05),
                                 lean * math.sin(curveDir))
             local col  = t > 0.85 and tipC or sc
-            local mat  = t > 0.85 and Enum.Material.Neon or Enum.Material.SmoothPlastic
+            local mat  = t > 0.85 and Enum.Material.Neon or Enum.Material.Grass
             part(Vector3.new(w, segL + 0.05, w), cf, col, mat)
             prevCF = prevCF * CFrame.new(0, segL, 0)
                             * CFrame.Angles(lean * math.cos(curveDir) * 0.5, 0,
@@ -396,7 +396,7 @@ local function makeSucculent(base)
     local tilt   = math.rad(rn(25, 55))   -- how much leaves spread outward
 
     -- Tiny central nub
-    part(Vector3.new(1.2, 1.2, 1.2), base * CFrame.new(0, 0.6, 0), sc, Enum.Material.SmoothPlastic)
+    part(Vector3.new(1.2, 1.2, 1.2), base * CFrame.new(0, 0.6, 0), sc, Enum.Material.LeafyGrass)
 
     for i = 1, leaves do
         local ang = (i / leaves) * math.pi * 2
@@ -407,7 +407,7 @@ local function makeSucculent(base)
         -- Tip color fade
         local t = ri(1,2)
         part(Vector3.new(lwide, llen, lwide * 0.25), cf,
-            t == 1 and cc or sc, Enum.Material.SmoothPlastic)
+            t == 1 and cc or sc, Enum.Material.LeafyGrass)
     end
     glow(folder, cc, 0.4, llen * 4)
 end
@@ -427,7 +427,7 @@ local function makePodStalks(base)
         -- Thin wiry stem
         part(Vector3.new(sw, h, sw),
             base * CFrame.new(ox, h*0.5, oz) * CFrame.Angles(lean, 0, lean),
-            sc, Enum.Material.SmoothPlastic)
+            sc, Enum.Material.Grass)
 
         -- Swollen pod
         local psz = sw * rn(3, 6)
@@ -465,5 +465,5 @@ task.spawn(function()
     for _ = 1, COUNTS.ridge  do makeRidge(rpos())        n+=1 if n%12 ==0 then task.wait() end end
     for _ = 1, COUNTS.flora  do makeFlora(rpos())        n+=1 if n%15 ==0 then task.wait() end end
     local total = COUNTS.spire+COUNTS.river+COUNTS.pool+COUNTS.ridge+COUNTS.flora
-    print(string.format("[SurfaceDecor] Volcanic surface: %d features placed", total))
+    print(string.format("[SurfaceDecor] Alien surface: %d features placed", total))
 end)
