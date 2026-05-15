@@ -283,48 +283,174 @@ local function makeRidge(phi, theta)
 end
 
 -- ── Alien Flora ──────────────────────────────────────────────────────────────
--- Sparse bioluminescent plants that glow against the dark volcanic rock.
--- Subtle — accents, not centrepieces.
+-- Four types inspired by AI alien plant art:
+--   mushroom caps, tentacle vines, succulent rosettes, pod stalks
 
-local FLORA_COLS = {
-    Color3.fromRGB(0,  200, 80),    -- toxic green
-    Color3.fromRGB(60, 100, 255),   -- blue spore
-    Color3.fromRGB(180, 50, 255),   -- violet
-    Color3.fromRGB(255, 160, 20),   -- amber (matches lava glow)
+-- Stem colors: dark organic purples, deep greens, near-black
+local STEM_COLS = {
+    Color3.fromRGB(35,  18,  45),   -- deep purple
+    Color3.fromRGB(12,  35,  20),   -- dark green
+    Color3.fromRGB(40,  22,  10),   -- dark brown
+    Color3.fromRGB(18,  12,  38),   -- midnight violet
+    Color3.fromRGB(8,   28,  30),   -- deep teal bark
 }
+-- Cap/tip colors: saturated but organic, not garish neon
+local CAP_COLS = {
+    Color3.fromRGB(200,  60, 180),  -- magenta mushroom
+    Color3.fromRGB( 60, 180, 255),  -- bioluminescent blue
+    Color3.fromRGB(120, 220,  80),  -- toxic lime
+    Color3.fromRGB(255, 120,  40),  -- ember orange
+    Color3.fromRGB(160,  80, 255),  -- deep violet
+    Color3.fromRGB( 40, 220, 180),  -- teal spore
+    Color3.fromRGB(220, 200,  60),  -- amber gold
+}
+
+local function stemCol() return STEM_COLS[ri(1,#STEM_COLS)] end
+local function capCol()  return CAP_COLS[ri(1,#CAP_COLS)]   end
+
+-- 1. Mushroom: thick squat stem, wide drooping cap, glow underneath
+local function makeMushroom(base)
+    local sc    = stemCol()
+    local cc    = capCol()
+    local stemH = rn(3, 9)
+    local stemW = rn(1.2, 2.8)
+    local capR  = stemW * rn(3, 6)   -- cap much wider than stem
+    local capH  = capR  * rn(0.25, 0.4)
+
+    -- Stem — slightly tapered, bulging at base
+    for s = 1, 3 do
+        local t  = (s - 0.5) / 3
+        local sw = stemW * (1 + (1 - t) * 0.5)   -- wider at bottom
+        part(Vector3.new(sw, stemH/3 + 0.1, sw),
+            base * CFrame.new(0, stemH * (s-1)/3 + stemH/6, 0),
+            sc, Enum.Material.SmoothPlastic)
+    end
+    -- Cap — flat ball, drooping at edges via wedges
+    local capCF = base * CFrame.new(0, stemH + capH * 0.3, 0)
+    local cap = part(Vector3.new(capR, capH, capR), capCF, cc, Enum.Material.SmoothPlastic)
+    cap.Shape  = Enum.PartType.Ball
+    -- Drooping rim flaps (3-5 wedge-like slabs around cap edge)
+    local flaps = ri(3, 5)
+    for i = 1, flaps do
+        local ang  = (i / flaps) * math.pi * 2
+        local fw   = capR * 0.55
+        local fh   = capH * 0.55
+        local cf   = base
+            * CFrame.new(0, stemH + capH * 0.05, 0)
+            * CFrame.Angles(0, ang, 0)
+            * CFrame.new(capR * 0.45, 0, 0)
+            * CFrame.Angles(0, 0, math.rad(rn(20, 45)))   -- droop outward
+        part(Vector3.new(fw, fh, fw * 0.35), cf, cc, Enum.Material.SmoothPlastic)
+    end
+    -- Soft underglow
+    glow(cap, cc, 0.8, capR * 5)
+end
+
+-- 2. Tentacle vine: chain of tapering cylinders curving outward from base
+local function makeTentacleVine(base)
+    local sc     = stemCol()
+    local tipC   = capCol()
+    local vines  = ri(3, 6)
+    for _ = 1, vines do
+        local segs  = ri(5, 9)
+        local baseW = rn(0.8, 1.8)
+        local len   = rn(6, 16)
+        -- Each vine curves in a random direction then arcs over
+        local curveDir = rn(0, math.pi * 2)
+        local curveLean = rn(0.3, 0.7)   -- how much it bends
+        local startOff = Vector3.new(rn(-4,4), 0, rn(-4,4))
+
+        local prevCF = base * CFrame.new(startOff.X, 0, startOff.Z)
+        for s = 1, segs do
+            local t    = s / segs
+            local segL = len / segs
+            local w    = baseW * (1 - t * 0.75)   -- taper toward tip
+            -- Arc: lean increases then levels off
+            local lean = curveLean * math.sin(t * math.pi * 0.8)
+            local cf   = prevCF
+                * CFrame.new(0, segL * 0.5, 0)
+                * CFrame.Angles(lean * math.cos(curveDir), rn(-0.05,0.05),
+                                lean * math.sin(curveDir))
+            local col  = t > 0.85 and tipC or sc
+            local mat  = t > 0.85 and Enum.Material.Neon or Enum.Material.SmoothPlastic
+            part(Vector3.new(w, segL + 0.05, w), cf, col, mat)
+            prevCF = prevCF * CFrame.new(0, segL, 0)
+                            * CFrame.Angles(lean * math.cos(curveDir) * 0.5, 0,
+                                            lean * math.sin(curveDir) * 0.5)
+        end
+        -- Glowing bulb tip
+        local tipSz = baseW * rn(1.2, 2.0)
+        local tipP  = part(Vector3.new(tipSz,tipSz,tipSz), prevCF, tipC, Enum.Material.Neon)
+        tipP.Shape  = Enum.PartType.Ball
+        glow(tipP, tipC, 0.7, tipSz * 8)
+    end
+end
+
+-- 3. Succulent rosette: wide flat wedge-leaves arranged in a circle
+local function makeSucculent(base)
+    local sc    = stemCol()
+    local cc    = capCol()
+    local leaves = ri(6, 10)
+    local llen   = rn(3, 8)
+    local lwide  = llen * rn(0.5, 0.9)
+    local tilt   = math.rad(rn(25, 55))   -- how much leaves spread outward
+
+    -- Tiny central nub
+    part(Vector3.new(1.2, 1.2, 1.2), base * CFrame.new(0, 0.6, 0), sc, Enum.Material.SmoothPlastic)
+
+    for i = 1, leaves do
+        local ang = (i / leaves) * math.pi * 2
+        local cf  = base
+            * CFrame.Angles(0, ang, 0)
+            * CFrame.Angles(tilt, 0, 0)
+            * CFrame.new(0, llen * 0.5, 0)
+        -- Tip color fade
+        local t = ri(1,2)
+        part(Vector3.new(lwide, llen, lwide * 0.25), cf,
+            t == 1 and cc or sc, Enum.Material.SmoothPlastic)
+    end
+    glow(folder, cc, 0.4, llen * 4)
+end
+
+-- 4. Pod stalk cluster: tall thin stems with swollen seed pods on top
+local function makePodStalks(base)
+    local sc    = stemCol()
+    local cc    = capCol()
+    local count = ri(4, 8)
+
+    for _ = 1, count do
+        local h   = rn(5, 14)
+        local sw  = rn(0.3, 0.7)
+        local ox  = rn(-5, 5); local oz = rn(-5, 5)
+        local lean = rn(-0.15, 0.15)
+
+        -- Thin wiry stem
+        part(Vector3.new(sw, h, sw),
+            base * CFrame.new(ox, h*0.5, oz) * CFrame.Angles(lean, 0, lean),
+            sc, Enum.Material.SmoothPlastic)
+
+        -- Swollen pod
+        local psz = sw * rn(3, 6)
+        local podCF = base * CFrame.new(ox, h + psz*0.4, oz)
+        local pod = part(Vector3.new(psz, psz*1.3, psz), podCF, cc, Enum.Material.SmoothPlastic)
+        pod.Shape = Enum.PartType.Ball
+
+        -- Tiny neon ring around pod middle
+        local ring = part(
+            Vector3.new(0.3, psz * 1.1, psz * 1.1),
+            podCF * CFrame.Angles(0, 0, math.rad(90)),
+            cc, Enum.Material.Neon, 0.2, false
+        )
+        ring.Shape = Enum.PartType.Cylinder
+        glow(pod, cc, 0.6, psz * 7)
+    end
+end
+
+local FLORA_KINDS = { makeMushroom, makeTentacleVine, makeSucculent, makePodStalks }
 
 local function makeFlora(phi, theta)
     local base = surfCF(phi, theta, 0, rn(0, math.pi*2))
-    local col  = FLORA_COLS[ri(1, #FLORA_COLS)]
-    local kind = ri(1, 2)
-
-    if kind == 1 then
-        -- Stalked bulb: simple tapered stem + glowing sphere tip
-        local h  = rn(4, 12)
-        local w  = rn(0.5, 1.2)
-        part(Vector3.new(w, h, w),
-            base * CFrame.new(0, h*0.5, 0), Color3.fromRGB(15,15,15),
-            Enum.Material.SmoothPlastic)
-        local bsz = rn(1.5, 3)
-        local bulb = part(Vector3.new(bsz,bsz,bsz),
-            base * CFrame.new(0, h + bsz*0.4, 0), col, Enum.Material.Neon)
-        bulb.Shape = Enum.PartType.Ball
-        glow(bulb, col, 1.0, bsz * 9)
-    else
-        -- Spike cluster: thin needles of varying heights
-        for _ = 1, ri(4, 8) do
-            local h  = rn(2, 8)
-            local w  = rn(0.2, 0.6)
-            local ox = rn(-3, 3); local oz = rn(-3, 3)
-            local lean = rn(-0.2, 0.2)
-            local stemCF = base * CFrame.new(ox, h*0.5, oz) * CFrame.Angles(lean, 0, lean)
-            part(Vector3.new(w, h, w), stemCF, Color3.fromRGB(10,10,10),
-                Enum.Material.SmoothPlastic)
-            local tipCF = base * CFrame.new(ox, h*0.9, oz)
-            local tip = part(Vector3.new(w*0.6, h*0.2, w*0.6), tipCF, col, Enum.Material.Neon)
-            glow(tip, col, 0.5, 6)
-        end
-    end
+    FLORA_KINDS[ri(1, #FLORA_KINDS)](base)
 end
 
 -- ── Scatter ───────────────────────────────────────────────────────────────────
