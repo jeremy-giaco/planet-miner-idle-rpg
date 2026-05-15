@@ -1,13 +1,12 @@
 -- World/Server/SurfaceDecor.server.lua
 -- Scatters real mesh models (rocks, asteroids, boulders) across the planet surface.
--- Models are loaded from the Roblox Creator Store via InsertService, then cloned,
--- scaled, randomly rotated, and placed flush with the sphere surface.
+-- Templates must be placed manually in ReplicatedStorage → RockTemplates folder
+-- in Studio (drag from Toolbox). This script clones them at runtime.
 
 if not game:GetService("RunService"):IsServer() then return end
 if _G._SurfaceDecorActive then return end
 _G._SurfaceDecorActive = true
 
-local InsertService    = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config           = require(ReplicatedStorage:WaitForChild("Config"))
 
@@ -21,39 +20,9 @@ local folder = Instance.new("Folder")
 folder.Name   = "SurfaceDecor"
 folder.Parent = workspace
 
--- ── Asset IDs ─────────────────────────────────────────────────────────────────
--- Free Creator Store models selected by the user.
--- Mix of asteroid rocks, boulders, mineral chunks, alien formations.
-local ASSET_IDS = {
-    124679136030955,
-    104255070586802,
-    104331582218001,
-    126997999714585,
-    18264896943,
-    122914102246073,
-    102475743881757,
-    81642219399552,
-    4776164961,
-    3637979087,
-    73562988443438,
-    11896342858,
-    7973780306,
-    85471893867855,
-    15359965253,
-    107261160523126,
-    258794641,
-    15876671760,
-    8021078503,
-    74299985742800,
-    2655317176,
-    103760903802024,
-    118226550971856,
-    13519873434,
-    120624064750029,
-    135086947258395,
-    5606182405,
-    16515639712,
-}
+-- ── Template folder ───────────────────────────────────────────────────────────
+-- In Studio: View → Toolbox → search by name/ID → drag models into
+-- ReplicatedStorage → RockTemplates.  Any model/part in that folder is fair game.
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -92,43 +61,21 @@ local function finalizeModel(model)
     end
 end
 
--- ── Load templates ────────────────────────────────────────────────────────────
+-- ── Load templates from ReplicatedStorage ────────────────────────────────────
 
-local templates = {}
-
-print("[SurfaceDecor] Loading mesh templates...")
-
-for _, id in ipairs(ASSET_IDS) do
-    local ok, result = pcall(function()
-        return InsertService:LoadAsset(id)
-    end)
-    if ok and result then
-        -- LoadAsset returns a Model container; grab the first child Model inside
-        local child = result:FindFirstChildWhichIsA("Model")
-                   or result:FindFirstChildWhichIsA("MeshPart")
-                   or result:FindFirstChildWhichIsA("Part")
-        if child then
-            child.Parent = nil
-            table.insert(templates, child)
-            print(string.format("[SurfaceDecor] Loaded asset %d → %s", id, child.Name))
-        else
-            -- Some assets ARE the model directly
-            result.Parent = nil
-            table.insert(templates, result)
-            print(string.format("[SurfaceDecor] Loaded asset %d → %s (root)", id, result.Name))
-        end
-    else
-        warn(string.format("[SurfaceDecor] Failed to load asset %d: %s", id, tostring(result)))
-    end
-    task.wait()   -- yield between loads to avoid throttling
-end
-
-print(string.format("[SurfaceDecor] %d/%d templates loaded", #templates, #ASSET_IDS))
-
-if #templates == 0 then
-    warn("[SurfaceDecor] No templates loaded — aborting scatter")
+local templateFolder = ReplicatedStorage:FindFirstChild("RockTemplates")
+if not templateFolder then
+    warn("[SurfaceDecor] ReplicatedStorage.RockTemplates not found — add models in Studio first")
     return
 end
+
+local templates = templateFolder:GetChildren()
+if #templates == 0 then
+    warn("[SurfaceDecor] RockTemplates folder is empty — drag Toolbox models in first")
+    return
+end
+
+print(string.format("[SurfaceDecor] %d templates found in RockTemplates", #templates))
 
 -- ── Scatter ───────────────────────────────────────────────────────────────────
 
