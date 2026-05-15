@@ -29,6 +29,9 @@
       "GameSetup": {
         "$path": "src/World/Server/GameSetup.server.lua"
       },
+      "SurfaceDecor": {
+        "$path": "src/World/Server/SurfaceDecor.server.lua"
+      },
       "WorldGen": {
         "$path": "src/World/Server/WorldGen.lua"
       },
