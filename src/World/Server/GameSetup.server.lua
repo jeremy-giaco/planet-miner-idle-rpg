@@ -28,7 +28,7 @@ local MOON_CONFIG = {
         -- textureId = "",  -- set to a valid Roblox DecalId for crater surface detail
     },
     base = {
-        position  = Vector3.new(0, Config.PLANET_RADIUS, 0),  -- north pole
+        position  = Vector3.new(0, Config.PLANET_RADIUS - 2, 0),  -- north pole, floor flush with sphere surface
         width     = 140,
         depth     = 200,
         height    = 44,
@@ -80,7 +80,7 @@ local function setupSpawn()
     end
     local spawn = Instance.new("SpawnLocation")
     spawn.Size     = Vector3.new(6, 1, 6)
-    spawn.Position = Vector3.new(0, R + 6, 0)   -- just above pole surface
+    spawn.Position = Vector3.new(0, R - 1, 0)   -- flush with base floor (BY-2+3=R+1)
     spawn.Anchored = true; spawn.Neutral = true
     spawn.AllowTeamChangeOnTouch = false
     spawn.Duration = 0; spawn.Transparency = 1

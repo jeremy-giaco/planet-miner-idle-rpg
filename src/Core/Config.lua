@@ -6,8 +6,8 @@ return {
     PLANET_CENTER = Vector3.new(0, 0, 0),
 
     -- Drone repair station — centered on the base roof.
-    -- Roof top Y = PLANET_RADIUS + base height = 1019 + 44 = 1063. Base Z center = -100.
-    STATION_POS = Vector3.new(0, 1063, -100),
+    -- Roof top Y = (PLANET_RADIUS - 2) + base height = 1017 + 44 = 1061. Base Z center = -100.
+    STATION_POS = Vector3.new(0, 1061, -100),
 
     -- Debris spawning
     DEBRIS_SPAWN_INTERVAL = 4,
