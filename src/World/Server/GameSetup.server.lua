@@ -23,8 +23,8 @@ local MOON_CONFIG = {
     planet = {
         radius   = Config.PLANET_RADIUS,
         center   = Config.PLANET_CENTER,
-        color     = Color3.fromRGB(148, 145, 158),   -- dark grey lunar regolith
-        material  = Enum.Material.Granite,
+        color     = Color3.fromRGB(22, 14, 10),    -- near-black volcanic basalt
+        material  = Enum.Material.Basalt,
         -- textureId = "",  -- set to a valid Roblox DecalId for crater surface detail
     },
     base = {
@@ -50,26 +50,40 @@ local PC = Config.PLANET_CENTER
 local function setupLighting()
     for _, obj in ipairs(Lighting:GetChildren()) do obj:Destroy() end
 
-    Lighting.Ambient                  = Color3.fromRGB(18, 18, 28)    -- very dark space fill
-    Lighting.OutdoorAmbient           = Color3.fromRGB(22, 22, 35)
-    Lighting.Brightness               = 3.5                           -- harsh directional sun
-    Lighting.EnvironmentDiffuseScale  = 0.15                          -- minimal bounce light (no atmosphere)
-    Lighting.EnvironmentSpecularScale = 0.8
-    Lighting.ClockTime                = 6.083  -- 6:05 am
+    -- Volcanic alien world: warm orange ambient from lava glow, dim sun
+    Lighting.Ambient                  = Color3.fromRGB(45, 18, 8)     -- deep red lava-lit fill
+    Lighting.OutdoorAmbient           = Color3.fromRGB(60, 25, 10)
+    Lighting.Brightness               = 1.8                            -- dimmer — lava does the work
+    Lighting.EnvironmentDiffuseScale  = 0.4
+    Lighting.EnvironmentSpecularScale = 0.6
+    Lighting.ClockTime                = 5.2   -- pre-dawn, dramatic low angle
     Lighting.GeographicLatitude       = 90
-    Lighting.FogStart = 4000
-    Lighting.FogEnd   = 7000
-    Lighting.FogColor = Color3.fromRGB(2, 2, 8)     -- deep black space
+    Lighting.FogStart = 1800
+    Lighting.FogEnd   = 5000
+    Lighting.FogColor = Color3.fromRGB(40, 14, 4)   -- thick volcanic haze
 
-    -- No Sky object → Roblox renders a pure black void, letting FogColor/Ambient give the space feel
+    -- Atmosphere: dense orange volcanic sky
+    local atmo = Instance.new("Atmosphere")
+    atmo.Density      = 0.6
+    atmo.Offset       = 0.2
+    atmo.Color        = Color3.fromRGB(120, 48, 12)   -- burnt orange
+    atmo.Decay        = Color3.fromRGB(60,  18,  5)
+    atmo.Glare        = 0.35
+    atmo.Haze         = 2.8
+    atmo.Parent       = Lighting
 
+    -- Strong bloom — lava and neon features bleed light
     local bloom = Instance.new("BloomEffect")
-    bloom.Intensity = 0.4; bloom.Size = 24; bloom.Threshold = 0.95
+    bloom.Intensity = 1.2; bloom.Size = 56; bloom.Threshold = 0.75
     bloom.Parent = Lighting
 
+    -- Warm color grade: push everything toward orange/amber
     local cc = Instance.new("ColorCorrectionEffect")
-    cc.Saturation = 0.1; cc.TintColor = Color3.fromRGB(180, 184, 215)
-    cc.Parent = Lighting
+    cc.Brightness  = -0.04
+    cc.Contrast    = 0.12
+    cc.Saturation  = 0.35
+    cc.TintColor   = Color3.fromRGB(255, 195, 140)
+    cc.Parent      = Lighting
 end
 
 -- ── Spawn ─────────────────────────────────────────────────────────────────────
