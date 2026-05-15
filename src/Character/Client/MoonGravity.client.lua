@@ -19,7 +19,6 @@ local Config            = require(ReplicatedStorage:WaitForChild("Config"))
 
 local PLANET_CENTER = Config.PLANET_CENTER
 local PLANET_RADIUS = Config.PLANET_RADIUS
-local SAFETY_RADIUS = PLANET_RADIUS * 2.2
 
 local character = script.Parent
 local humanoid  = character:WaitForChild("Humanoid")
@@ -39,34 +38,43 @@ bodyGyro.Parent    = hrp
 
 -- ── Spherical gravity ─────────────────────────────────────────────────────────
 
+-- We track the "last good up" so we can redirect the Humanoid jump impulse.
+-- When the Humanoid jumps it fires a +Y world impulse; we detect the sudden
+-- upward velocity spike and re-orient it to be radially outward instead.
 local lastUp = Vector3.new(0, 1, 0)
 
 RunService.Heartbeat:Connect(function(dt)
     if not hrp.Parent then return end
     if character:FindFirstChild("InShip") then return end
 
-    local pos        = hrp.Position
+    local pos = hrp.Position
     local fromCenter = pos - PLANET_CENTER
-    local dist       = fromCenter.Magnitude
+    local dist = fromCenter.Magnitude
     if dist < 1 then return end
 
-    local up  = fromCenter.Unit
-    lastUp    = up
-    local g   = workspace.Gravity
+    local up   = fromCenter.Unit   -- radially outward = "up" for this player
+    lastUp = up
 
-    -- Cancel global -Y gravity, apply radial pull toward planet center
+    local g   = workspace.Gravity  -- studs/s²
+
+    -- 1. Cancel global -Y gravity that Roblox already applied this frame
+    -- 2. Apply gravity toward planet center
+    -- Net: replace -Y pull with -radial pull
     local vel = hrp.AssemblyLinearVelocity
-    hrp.AssemblyLinearVelocity = vel
-        + Vector3.new(0, g * dt, 0)   -- undo -Y
-        + (-up * g * dt)              -- toward center
+    local cancelGlobal  = Vector3.new(0, g * dt, 0)    -- undo -Y
+    local sphericalPull = -up * g * dt                 -- toward center
+    hrp.AssemblyLinearVelocity = vel + cancelGlobal + sphericalPull
 
     -- ── BodyGyro orientation ──────────────────────────────────────────────────
+
     local moveDir = humanoid.MoveDirection
+
     local fwd
     if moveDir.Magnitude > 0.1 then
         fwd = moveDir - moveDir:Dot(up) * up
     else
-        fwd = hrp.CFrame.LookVector - hrp.CFrame.LookVector:Dot(up) * up
+        fwd = hrp.CFrame.LookVector
+        fwd = fwd - fwd:Dot(up) * up
     end
     if fwd.Magnitude < 0.01 then
         fwd = Vector3.new(0, 0, -1) - Vector3.new(0, 0, -1):Dot(up) * up
@@ -74,27 +82,34 @@ RunService.Heartbeat:Connect(function(dt)
     if fwd.Magnitude < 0.01 then
         fwd = Vector3.new(1, 0, 0) - Vector3.new(1, 0, 0):Dot(up) * up
     end
-    bodyGyro.CFrame = CFrame.lookAt(Vector3.zero, fwd.Unit, up)
+    fwd = fwd.Unit
 
-    -- Safety respawn
-    if dist > SAFETY_RADIUS then
-        hrp.CFrame = CFrame.new(PLANET_CENTER + Vector3.new(0, PLANET_RADIUS + 10, 0))
-        hrp.AssemblyLinearVelocity = Vector3.zero
-    end
+    bodyGyro.CFrame = CFrame.lookAt(Vector3.zero, fwd, up)
 end)
 
--- ── Redirect Humanoid jump impulse to radially outward ───────────────────────
+-- ── Redirect Humanoid jump impulse ───────────────────────────────────────────
+-- The Humanoid applies a +Y world-space impulse on jump.
+-- We intercept StateChanged→Jumping and correct any misdirected velocity.
 
 humanoid.StateChanged:Connect(function(_, new)
     if new ~= Enum.HumanoidStateType.Jumping then return end
+
     task.defer(function()
-        local vel     = hrp.AssemblyLinearVelocity
-        local up      = lastUp
+        -- By the time defer runs, Roblox has applied the jump impulse.
+        -- Extract the component that isn't radially outward and fix it.
+        local vel    = hrp.AssemblyLinearVelocity
+        local up     = lastUp
+        local radial = vel:Dot(up)   -- how much velocity is radially outward
+
+        -- If the jump gave us very little radial velocity, redirect the
+        -- global +Y component to radially outward.
         local worldUp = Vector3.new(0, 1, 0)
         local jumpY   = vel:Dot(worldUp)
-        local radial  = vel:Dot(up)
+
         if radial < jumpY * 0.5 and jumpY > 5 then
-            hrp.AssemblyLinearVelocity = vel - worldUp * jumpY + up * jumpY
+            -- Remove the global Y component, add it radially
+            local corrected = vel - worldUp * jumpY + up * jumpY
+            hrp.AssemblyLinearVelocity = corrected
         end
     end)
 end)
