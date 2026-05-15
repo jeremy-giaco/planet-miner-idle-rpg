@@ -63,19 +63,19 @@ end
 
 -- ── Load templates from ReplicatedStorage ────────────────────────────────────
 
-local templateFolder = ReplicatedStorage:FindFirstChild("RockTemplates")
+local templateFolder = ReplicatedStorage:FindFirstChild("objects")
 if not templateFolder then
-    warn("[SurfaceDecor] ReplicatedStorage.RockTemplates not found — add models in Studio first")
+    warn("[SurfaceDecor] ReplicatedStorage.objects not found — add models in Studio first")
     return
 end
 
 local templates = templateFolder:GetChildren()
 if #templates == 0 then
-    warn("[SurfaceDecor] RockTemplates folder is empty — drag Toolbox models in first")
+    warn("[SurfaceDecor] objects folder is empty — drag Toolbox models in first")
     return
 end
 
-print(string.format("[SurfaceDecor] %d templates found in RockTemplates", #templates))
+print(string.format("[SurfaceDecor] %d templates found in objects", #templates))
 
 -- ── Scatter ───────────────────────────────────────────────────────────────────
 
