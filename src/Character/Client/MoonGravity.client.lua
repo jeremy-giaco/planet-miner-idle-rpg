@@ -1,47 +1,34 @@
 -- LocalScript → StarterCharacterScripts
--- Spherical gravity: pulls toward PLANET_CENTER from any direction.
+-- Spherical gravity experiment: redirects gravity to always pull toward
+-- PLANET_CENTER regardless of where on the sphere the player stands.
 --
--- Uses a VectorForce that cancels Roblox's global -Y gravity and replaces
--- it with a radial pull toward the planet center. VectorForce is updated
--- every Heartbeat; it runs at physics sub-step rate internally so there's
--- no under-correction / sliding from frame-rate mismatch.
+-- Strategy: keep workspace.Gravity at its normal value so the Humanoid's
+-- jump power math stays intact. Each frame we:
+--   1. Cancel the global -Y gravity pull  (+Y * g * dt added to velocity)
+--   2. Apply our own pull toward PLANET_CENTER  (-radial * g * dt)
+-- Net result: gravity always points toward the planet center.
 --
--- WalkSpeed is left at 48 so the Humanoid handles movement naturally.
--- This means the equator is still awkward (camera is world-Y up so WASD
--- doesn't map cleanly to "up the sphere") but everything else feels right.
---
--- BodyGyro keeps the character upright relative to the surface normal.
--- Safety respawn if player drifts too far from the planet.
+-- BodyGyro keeps HRP upright relative to the surface normal (unchanged from before).
 
 local RunService        = game:GetService("RunService")
 if not RunService:IsClient() then return end
 if not script.Parent:IsA("Model") then return end
+local UserInputService  = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config            = require(ReplicatedStorage:WaitForChild("Config"))
 
-local PLANET_CENTER  = Config.PLANET_CENTER
-local PLANET_RADIUS  = Config.PLANET_RADIUS
-local SAFETY_RADIUS  = PLANET_RADIUS * 2.2
+local PLANET_CENTER = Config.PLANET_CENTER
+local PLANET_RADIUS = Config.PLANET_RADIUS
+local SAFETY_RADIUS = PLANET_RADIUS * 2.2
 
 local character = script.Parent
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 
 humanoid.WalkSpeed  = 48
-humanoid.AutoRotate = false
+humanoid.AutoRotate = false   -- BodyGyro owns all rotation
 
--- ── VectorForce — spherical gravity ──────────────────────────────────────────
-
-local gravAtt = Instance.new("Attachment")
-gravAtt.Parent = hrp
-
-local gravForce = Instance.new("VectorForce")
-gravForce.Attachment0 = gravAtt
-gravForce.RelativeTo  = Enum.ActuatorRelativeTo.World
-gravForce.Force       = Vector3.zero
-gravForce.Parent      = hrp
-
--- ── BodyGyro — surface orientation ───────────────────────────────────────────
+-- ── BodyGyro — aligns HRP so its Y axis = surface normal ─────────────────────
 
 local bodyGyro     = Instance.new("BodyGyro")
 bodyGyro.MaxTorque = Vector3.new(4e5, 4e5, 4e5)
@@ -50,24 +37,30 @@ bodyGyro.D         = 400
 bodyGyro.CFrame    = CFrame.new()
 bodyGyro.Parent    = hrp
 
--- ── Main loop ─────────────────────────────────────────────────────────────────
+-- ── Spherical gravity ─────────────────────────────────────────────────────────
 
-RunService.Heartbeat:Connect(function()
+local lastUp = Vector3.new(0, 1, 0)
+
+RunService.Heartbeat:Connect(function(dt)
     if not hrp.Parent then return end
     if character:FindFirstChild("InShip") then return end
 
-    local pos  = hrp.Position
-    local dist = (pos - PLANET_CENTER).Magnitude
+    local pos        = hrp.Position
+    local fromCenter = pos - PLANET_CENTER
+    local dist       = fromCenter.Magnitude
     if dist < 1 then return end
 
-    local up   = (pos - PLANET_CENTER).Unit
-    local g    = workspace.Gravity
-    local mass = hrp.AssemblyMass
+    local up  = fromCenter.Unit
+    lastUp    = up
+    local g   = workspace.Gravity
 
     -- Cancel global -Y gravity, apply radial pull toward planet center
-    gravForce.Force = Vector3.new(0, mass * g, 0) + (-up * mass * g)
+    local vel = hrp.AssemblyLinearVelocity
+    hrp.AssemblyLinearVelocity = vel
+        + Vector3.new(0, g * dt, 0)   -- undo -Y
+        + (-up * g * dt)              -- toward center
 
-    -- Orient character to stand on sphere surface
+    -- ── BodyGyro orientation ──────────────────────────────────────────────────
     local moveDir = humanoid.MoveDirection
     local fwd
     if moveDir.Magnitude > 0.1 then
@@ -83,22 +76,14 @@ RunService.Heartbeat:Connect(function()
     end
     bodyGyro.CFrame = CFrame.lookAt(Vector3.zero, fwd.Unit, up)
 
-    -- Safety: if drifted into space, snap back to north pole
+    -- Safety respawn
     if dist > SAFETY_RADIUS then
         hrp.CFrame = CFrame.new(PLANET_CENTER + Vector3.new(0, PLANET_RADIUS + 10, 0))
         hrp.AssemblyLinearVelocity = Vector3.zero
     end
 end)
 
--- ── Redirect jump impulse to radially outward ────────────────────────────────
-
-local lastUp = Vector3.new(0, 1, 0)
-
-RunService.Heartbeat:Connect(function()
-    if hrp.Parent and (hrp.Position - PLANET_CENTER).Magnitude > 1 then
-        lastUp = (hrp.Position - PLANET_CENTER).Unit
-    end
-end)
+-- ── Redirect Humanoid jump impulse to radially outward ───────────────────────
 
 humanoid.StateChanged:Connect(function(_, new)
     if new ~= Enum.HumanoidStateType.Jumping then return end

@@ -84,9 +84,6 @@
         },
         "AutoEquip": {
           "$path": "src/Character/Client/AutoEquip.client.lua"
-        },
-        "SphericalCamera": {
-          "$path": "src/Character/Client/SphericalCamera.client.lua"
         }
       }
     },
