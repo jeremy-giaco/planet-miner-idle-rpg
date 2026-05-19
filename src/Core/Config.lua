@@ -31,7 +31,8 @@ return {
 
     -- ── Player ────────────────────────────────────────────────────────────────
 
-    WALK_SPEED      = 16,           -- default Roblox walk speed
+    WALK_SPEED      = 10,           -- slow walk speed
+    RUN_SPEED       = 22,           -- run speed (toggle with R)
     JUMP_POWER      = 50,           -- default Roblox jump power
 
     -- ── Jetpack ──────────────────────────────────────────────────────────────
@@ -66,6 +67,10 @@ return {
     DEBRIS_DEATH_PIECES     = 27,       -- visual shards on death
     DEBRIS_CARGO_CHANCE     = 0.10,     -- fraction of shards becoming collectible
     DEBRIS_COLLECT_RADIUS   = 20,       -- studs for auto-collect proximity
+    ORE_MAGNET_RADIUS       = 20,       -- studs — ore starts flying toward player
+    ORE_COLLECT_RADIUS      = 5,        -- studs — ore collected on arrival
+    ORE_SPAWN_INTERVAL      = 6,        -- seconds between ore spawns
+    ORE_MAX_COUNT           = 18,       -- max ore nodes alive at once
 
     COLLECTIBLE_LIFETIME        = 60,   -- seconds before collectible despawns
     COLLECTIBLE_BEACON_HEIGHT   = 90,   -- height of collection beacon beam
@@ -146,7 +151,7 @@ return {
             element              = "Earth",
             difficulty_multiplier = 1,
             min_radius           = 0,
-            max_radius           = 80,
+            max_radius           = 250,
         },
         {
             id                   = 2,
@@ -154,8 +159,8 @@ return {
             display_name         = "The Badlands",
             element              = "Fire",
             difficulty_multiplier = 3,
-            min_radius           = 80,
-            max_radius           = 300,
+            min_radius           = 250,
+            max_radius           = 650,
         },
         {
             id                   = 3,
@@ -163,8 +168,8 @@ return {
             display_name         = "The Wastes",
             element              = "Poison",
             difficulty_multiplier = 8,
-            min_radius           = 300,
-            max_radius           = 500,
+            min_radius           = 650,
+            max_radius           = 1050,
         },
         {
             id                   = 4,
@@ -172,7 +177,7 @@ return {
             display_name         = "The Lava Ring",
             element              = "Fire",
             difficulty_multiplier = 20,
-            min_radius           = 500,
+            min_radius           = 1050,
             max_radius           = math.huge,
         },
     },

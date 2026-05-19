@@ -14,11 +14,11 @@ local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 local torso     = character:WaitForChild("UpperTorso")
 
-local THRUST          = Config.JETPACK_THRUST
-local MAX_UP_SPEED    = Config.JETPACK_MAX_UP_SPEED
 local JETPACK_DELAY   = Config.JETPACK_ACTIVATION_DELAY
-local FORWARD_THRUST  = Config.JETPACK_FORWARD_THRUST
-local MAX_HORIZ_SPEED = Config.JETPACK_MAX_HORIZ_SPEED
+
+-- Helper: read from _G.LiveConfig if the admin panel has set a live override,
+-- otherwise fall back to the baked Config value.
+local function live(key) return (_G.LiveConfig and _G.LiveConfig[key]) or Config[key] end
 
 local UP = Vector3.new(0, 1, 0)
 
@@ -167,8 +167,9 @@ RunService.Heartbeat:Connect(function(dt)
             local upDir   = UP
             local vel     = hrp.AssemblyLinearVelocity
             local upSpeed = vel:Dot(upDir)
-            if upSpeed < MAX_UP_SPEED then
-                local boost = math.min(THRUST * dt, MAX_UP_SPEED - upSpeed)
+            local maxUp   = live("JETPACK_MAX_UP_SPEED")
+            if upSpeed < maxUp then
+                local boost = math.min(live("JETPACK_THRUST") * dt, maxUp - upSpeed)
                 hrp.AssemblyLinearVelocity = vel + upDir * boost
             end
 
@@ -176,12 +177,12 @@ RunService.Heartbeat:Connect(function(dt)
             local moveDir = humanoid.MoveDirection
             local inAir   = humanoid.FloorMaterial == Enum.Material.Air
             if inAir and moveDir.Magnitude > 0.1 then
-                -- Project move direction onto the horizontal plane (remove up component)
-                local horizDir = (moveDir - upDir * moveDir:Dot(upDir)).Unit
-                local horizVel = vel - upDir * vel:Dot(upDir)
+                local horizDir   = (moveDir - upDir * moveDir:Dot(upDir)).Unit
+                local horizVel   = vel - upDir * vel:Dot(upDir)
                 local horizSpeed = horizVel:Dot(horizDir)
-                if horizSpeed < MAX_HORIZ_SPEED then
-                    local fwdBoost = math.min(FORWARD_THRUST * dt, MAX_HORIZ_SPEED - horizSpeed)
+                local maxHoriz   = live("JETPACK_MAX_HORIZ_SPEED")
+                if horizSpeed < maxHoriz then
+                    local fwdBoost = math.min(live("JETPACK_FORWARD_THRUST") * dt, maxHoriz - horizSpeed)
                     hrp.AssemblyLinearVelocity = hrp.AssemblyLinearVelocity + horizDir * fwdBoost
                 end
             end

@@ -1,4 +1,4 @@
--- LocalScript → StarterGui/Sidebar
+-- LocalScript → StarterGui/TopNav
 -- Three independent popdown buttons at top of screen (right of Roblox buttons).
 if not game:GetService("RunService"):IsClient() then return end
 
@@ -46,7 +46,7 @@ local ROBLOX_RESERVED = 196
 -- ── Screen GUI ────────────────────────────────────────────────────────────────
 
 local sg = Instance.new("ScreenGui")
-sg.Name = "Sidebar"; sg.ResetOnSpawn = false
+sg.Name = "TopNav"; sg.ResetOnSpawn = false
 sg.IgnoreGuiInset = true
 sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 sg.Parent = playerGui
@@ -591,4 +591,4 @@ end)
 
 makeTabBtn("⚙","SETTINGS",3,settingsPopup,settingsToggle,settingsClose)
 
-print("[Sidebar] Active")
+print("[TopNav] Active")

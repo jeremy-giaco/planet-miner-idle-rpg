@@ -492,6 +492,134 @@ function WorldGen.buildDebrisShield()
     return shield
 end
 
+-- ── Helipad ───────────────────────────────────────────────────────────────────
+-- Sits on top of the hangar roof, centred over the bay.
+
+function WorldGen.buildHelipad()
+    local bp  = Config.BASE_POSITION
+    local W   = Config.BASE_WIDTH
+    local D   = Config.BASE_DEPTH
+    local H   = Config.BASE_HEIGHT
+    local col = Config.BASE_COLORS
+
+    -- Hangar dimensions (mirror buildHangar constants)
+    local HD   = 55
+    local HH   = H + 14             -- hangar internal height
+    -- Hangar ceiling top surface = GROUND_Y + HH + 5
+    local padY = GROUND_Y + HH + 5
+
+    local northZ = bp.Z - D/2
+    local cx     = bp.X
+    local cz     = northZ - HD/2    -- hangar centre Z
+
+    local YELLOW = Color3.fromRGB(255, 210, 0)
+    local WHITE  = Color3.fromRGB(240, 240, 240)
+    local DARK   = Color3.fromRGB(30,  34,  48)
+    local NEON_B = col.neon
+
+    local folder = Instance.new("Folder")
+    folder.Name   = "Helipad"
+    folder.Parent = workspace
+
+    local function hp(size, wx, wy, wz, color, mat, trans, collide)
+        local p = Instance.new("Part")
+        p.Size         = size
+        p.Position     = Vector3.new(wx, wy, wz)
+        p.Anchored     = true
+        p.CanCollide   = collide ~= false
+        p.CastShadow   = false
+        p.Color        = color
+        p.Material     = mat or Enum.Material.SmoothPlastic
+        p.Transparency = trans or 0
+        p.Parent       = folder
+        return p
+    end
+    local function hl(parent, color, brightness, range)
+        local l = Instance.new("PointLight")
+        l.Color = color; l.Brightness = brightness; l.Range = range
+        l.Parent = parent
+    end
+
+    -- Main pad surface (large flat circle approximated by a cylinder)
+    local PAD_R = 30
+    local padSurface = Instance.new("Part")
+    padSurface.Shape       = Enum.PartType.Cylinder
+    padSurface.Size        = Vector3.new(0.8, PAD_R * 2, PAD_R * 2)
+    padSurface.CFrame      = CFrame.new(cx, padY + 0.4, cz) * CFrame.Angles(0, 0, math.rad(90))
+    padSurface.Anchored    = true
+    padSurface.CanCollide  = true
+    padSurface.CastShadow  = false
+    padSurface.Color       = DARK
+    padSurface.Material    = Enum.Material.SmoothPlastic
+    padSurface.Parent      = folder
+
+    -- Yellow outer ring decal (thin neon cylinder, slightly wider)
+    local outerRing = Instance.new("Part")
+    outerRing.Shape       = Enum.PartType.Cylinder
+    outerRing.Size        = Vector3.new(0.2, (PAD_R + 2) * 2, (PAD_R + 2) * 2)
+    outerRing.CFrame      = CFrame.new(cx, padY + 0.82, cz) * CFrame.Angles(0, 0, math.rad(90))
+    outerRing.Anchored    = true
+    outerRing.CanCollide  = false
+    outerRing.CastShadow  = false
+    outerRing.Color       = YELLOW
+    outerRing.Material    = Enum.Material.Neon
+    outerRing.Transparency = 0.25
+    outerRing.Parent       = folder
+    hl(outerRing, YELLOW, 1.5, 40)
+
+    -- "H" marking — two vertical bars + crossbar (flat parts on pad surface)
+    local H_THICK = 1.4
+    local H_TALL  = 12
+    local H_WIDE  = 10
+    -- Left bar
+    hp(Vector3.new(H_THICK, 0.25, H_TALL), cx - H_WIDE/2, padY + 0.82, cz, YELLOW, Enum.Material.Neon, 0, false)
+    -- Right bar
+    hp(Vector3.new(H_THICK, 0.25, H_TALL), cx + H_WIDE/2, padY + 0.82, cz, YELLOW, Enum.Material.Neon, 0, false)
+    -- Crossbar
+    hp(Vector3.new(H_WIDE + H_THICK, 0.25, H_THICK), cx, padY + 0.82, cz, YELLOW, Enum.Material.Neon, 0, false)
+
+    -- Corner approach lights (8 evenly spaced around the rim)
+    for i = 0, 7 do
+        local a   = (i / 8) * math.pi * 2
+        local lx  = cx + math.cos(a) * (PAD_R - 2)
+        local lz  = cz + math.sin(a) * (PAD_R - 2)
+        local col2 = (i % 2 == 0) and YELLOW or WHITE
+        local post = hp(Vector3.new(0.6, 2.5, 0.6), lx, padY + 1.25 + 2.5/2, lz, DARK, Enum.Material.Metal)
+        local cap  = hp(Vector3.new(1, 0.6, 1),     lx, padY + 1.25 + 2.5 + 0.3, lz, col2, Enum.Material.Neon, 0, false)
+        hl(cap, col2, 2, 18)
+        -- Blinking for alternating lights
+        if i % 2 == 0 then
+            task.spawn(function()
+                while cap.Parent do
+                    cap.Transparency = 0;   task.wait(0.5)
+                    cap.Transparency = 0.85; task.wait(0.5)
+                end
+            end)
+        end
+    end
+
+    -- Wind-sock pole (decorative)
+    local poleH = 12
+    local pole = hp(Vector3.new(0.5, poleH, 0.5), cx + PAD_R - 4, padY + 1 + poleH/2, cz - PAD_R + 4,
+        DARK, Enum.Material.Metal)
+    -- Windsock body (neon orange cone-ish)
+    hp(Vector3.new(0.5, 0.5, 5),
+        cx + PAD_R - 4, padY + 1 + poleH + 0.25, cz - PAD_R + 4 + 2.5,
+        Color3.fromRGB(255, 90, 20), Enum.Material.Neon, 0, false)
+
+    -- Neon base trim matching the hangar style
+    local trim = hp(Vector3.new(0.4, 0.3, 0.3), cx, padY + 0.2, cz, NEON_B, Enum.Material.Neon, 1, false)
+    for _, xz in ipairs({{ PAD_R+1, 0}, {-(PAD_R+1), 0}, {0, PAD_R+1}, {0, -(PAD_R+1)}}) do
+        local t = hp(Vector3.new(0.4, 0.6, 0.4),
+            cx + xz[1], padY + 1.5, cz + xz[2],
+            NEON_B, Enum.Material.Neon, 0, false)
+        hl(t, NEON_B, 1, 20)
+    end
+
+    print("[WorldGen] Helipad built at Y=" .. padY .. " over hangar Z=" .. cz)
+    return folder
+end
+
 -- ── Ground plane ──────────────────────────────────────────────────────────────
 -- Simple flat ground while Terrain generation is not yet built.
 -- Replace this with Terrain API calls once procedural gen is ready.

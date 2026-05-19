@@ -20,12 +20,12 @@ local oreFolder = Instance.new("Folder")
 oreFolder.Name   = "Ores"
 oreFolder.Parent = Workspace
 
-local SPAWN_INTERVAL  = 6
-local MAX_ORES        = 18
-local COLLECT_RADIUS  = 8   -- studs — walk-over pickup distance
+-- Spawn constants read from Config each tick so admin tweaks take effect live
+-- These are read per-frame from Config so live tweaks via AdminConsole take effect
+local MAGNET_SPEED    = 28  -- base studs/sec pull speed (not yet in Config)
 
 -- Active ore registry for proximity collection
-local activeOres = {}   -- { part, metal }
+local activeOres = {}   -- { part, metal, conn, magnetized }
 
 -- ── Weighted random metal picker ──────────────────────────────────────────────
 
@@ -44,26 +44,17 @@ end
 -- Ores appear within the Compound + Badlands zones (radius 20-180 from origin).
 -- They sit slightly above ground level and spin around the Y axis.
 
-local COMPOUND_SURFACE_Y = 3    -- top of Compound slab
-local BADLANDS_SURFACE_Y = 1.5  -- top of Badlands slab
-
-local function surfaceYForRadius(r)
-    if r <= 810 then return COMPOUND_SURFACE_Y end
-    return BADLANDS_SURFACE_Y
-end
-
 local function spawnOre()
-    if #oreFolder:GetChildren() >= MAX_ORES then return end
+    if #oreFolder:GetChildren() >= Config.ORE_MAX_COUNT then return end
 
     local metal = pickMaterial()
 
-    -- Random flat-world position within compound/badlands
+    -- Spawn from edge of safe zone outward, stay inside map ground (MAP_WIDTH/2 = 1200)
     local angle  = math.random() * math.pi * 2
-    local radius = math.random(200, 1800)   -- 200-1800 studs from origin
-    local groundY = surfaceYForRadius(radius)
+    local radius = math.random(180, 1100)   -- studs from origin (within map bounds)
     local pos = Vector3.new(
         math.cos(angle) * radius,
-        groundY + 0.6,   -- hover a little above surface
+        Config.MAP_GROUND_Y + 0.6,  -- hover a little above surface
         math.sin(angle) * radius
     )
 
@@ -114,9 +105,26 @@ end
 
 -- ── Proximity collection loop ─────────────────────────────────────────────────
 
+-- Collect an ore entry immediately (called from magnet coroutine or proximity loop)
+local function collectOre(entry, plr, i)
+    local ore      = entry.part
+    local worldPos = ore.Position
+    entry.conn:Disconnect()
+    if entry.magnetConn then entry.magnetConn:Disconnect() end
+    table.remove(activeOres, i)
+    ore:Destroy()
+    if _G.PlayerData then
+        _G.PlayerData.addMaterial(plr, entry.metal.name, 1)
+        _G.PlayerData.addXP(plr, 15)
+    end
+    collectFragmentEvent:FireClient(plr, entry.metal.name, 1, worldPos)
+    materialEarned:Fire(plr, entry.metal.name, 1)
+end
+
+-- Proximity + magnet loop
 task.spawn(function()
     while true do
-        task.wait(0.2)
+        task.wait(0.15)
         for i = #activeOres, 1, -1 do
             local entry = activeOres[i]
             local ore   = entry.part
@@ -127,18 +135,27 @@ task.spawn(function()
             for _, plr in ipairs(Players:GetPlayers()) do
                 local char = plr.Character
                 local hrp  = char and char:FindFirstChild("HumanoidRootPart")
-                if hrp and (hrp.Position - ore.Position).Magnitude <= COLLECT_RADIUS then
-                    local worldPos = ore.Position
-                    entry.conn:Disconnect()
-                    table.remove(activeOres, i)
-                    ore:Destroy()
-                    if _G.PlayerData then
-                        _G.PlayerData.addMaterial(plr, entry.metal.name, 1)
-                        _G.PlayerData.addXP(plr, 15)
-                    end
-                    collectFragmentEvent:FireClient(plr, entry.metal.name, 1, worldPos)
-                    materialEarned:Fire(plr, entry.metal.name, 1)
+                if not hrp then continue end
+                local dist = (hrp.Position - ore.Position).Magnitude
+                if dist <= Config.ORE_COLLECT_RADIUS then
+                    collectOre(entry, plr, i)
                     break
+                elseif dist <= Config.ORE_MAGNET_RADIUS and not entry.magnetized then
+                    -- Stop the spin loop so it stops overriding the ore position
+                    entry.conn:Disconnect()
+                    entry.magnetized = true
+                    local targetPlr  = plr
+                    entry.magnetConn = RunService.Heartbeat:Connect(function(dt)
+                        if not (ore and ore.Parent) then return end
+                        local targetHrp = targetPlr.Character and targetPlr.Character:FindFirstChild("HumanoidRootPart")
+                        if not targetHrp then return end
+                        local toPlayer = targetHrp.Position - ore.Position
+                        local d        = toPlayer.Magnitude
+                        -- Accelerate as it closes in
+                        local speed    = MAGNET_SPEED * (1 + (Config.ORE_MAGNET_RADIUS - d) / Config.ORE_MAGNET_RADIUS * 3)
+                        local step     = math.min(d, speed * dt)
+                        ore.CFrame     = CFrame.new(ore.Position + toPlayer.Unit * step)
+                    end)
                 end
             end
         end
@@ -150,7 +167,7 @@ end)
 local lastSpawn = 0
 RunService.Heartbeat:Connect(function()
     local now = tick()
-    if now - lastSpawn >= SPAWN_INTERVAL then
+    if now - lastSpawn >= Config.ORE_SPAWN_INTERVAL then
         lastSpawn = now
         task.spawn(spawnOre)
     end

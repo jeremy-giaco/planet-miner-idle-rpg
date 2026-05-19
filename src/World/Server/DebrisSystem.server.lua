@@ -423,13 +423,17 @@ end
 local HALF_W = Config.MAP_WIDTH  / 2
 local HALF_D = Config.MAP_DEPTH  / 2
 
+local BASE_SAFE_RADIUS = 300  -- studs around origin — no debris spawns here
+
 local function spawnDebris()
-    -- Random position within the map bounds, falling from above
-    local spawnPos = Vector3.new(
-        math.random(-HALF_W, HALF_W),
-        Config.DEBRIS_SPAWN_HEIGHT,
-        math.random(-HALF_D, HALF_D)
-    )
+    -- Random position within the map bounds, avoiding the base safe zone
+    local x, z
+    repeat
+        x = math.random(-HALF_W, HALF_W)
+        z = math.random(-HALF_D, HALF_D)
+    until math.sqrt(x*x + z*z) >= BASE_SAFE_RADIUS
+
+    local spawnPos = Vector3.new(x, Config.DEBRIS_SPAWN_HEIGHT, z)
 
     local s   = math.random(13, 21)
     local mat = pickMaterial()
@@ -530,11 +534,26 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- ── Proximity collection ──────────────────────────────────────────────────────
+-- ── Proximity + magnet collection ────────────────────────────────────────────
+
+local FRAG_MAGNET_SPEED   = 28    -- base studs/sec (reads Config.ORE_MAGNET_RADIUS / ORE_COLLECT_RADIUS live)
+
+local function collectFragment(entry, plr, i)
+    local p       = entry.part
+    local worldPos = p.Position
+    if entry.magnetConn then entry.magnetConn:Disconnect() end
+    table.remove(activeCollectibles, i)
+    p:Destroy()
+    if _G.PlayerData then
+        _G.PlayerData.addMaterial(plr, entry.matName, entry.qty)
+        _G.PlayerData.addXP(plr, entry.qty * 5)
+    end
+    collectFragmentEvent:FireClient(plr, entry.matName, entry.qty, worldPos)
+end
 
 task.spawn(function()
     while true do
-        task.wait(0.25)
+        task.wait(0.15)
         for i = #activeCollectibles, 1, -1 do
             local entry = activeCollectibles[i]
             local p     = entry.part
@@ -545,16 +564,31 @@ task.spawn(function()
             for _, plr in ipairs(Players:GetPlayers()) do
                 local char = plr.Character
                 local hrp  = char and char:FindFirstChild("HumanoidRootPart")
-                if hrp and (hrp.Position - p.Position).Magnitude <= Config.DEBRIS_COLLECT_RADIUS then
-                    local worldPos = p.Position
-                    table.remove(activeCollectibles, i)
-                    p:Destroy()
-                    if _G.PlayerData then
-                        _G.PlayerData.addMaterial(plr, entry.matName, entry.qty)
-                        _G.PlayerData.addXP(plr, entry.qty * 5)
-                    end
-                    collectFragmentEvent:FireClient(plr, entry.matName, entry.qty, worldPos)
+                if not hrp then continue end
+                local dist = (hrp.Position - p.Position).Magnitude
+                if dist <= Config.ORE_COLLECT_RADIUS then
+                    collectFragment(entry, plr, i)
                     break
+                elseif dist <= Config.ORE_MAGNET_RADIUS and not entry.magnetized then
+                    entry.magnetized = true
+                    -- Remove from spin table so it stops fighting the magnet movement
+                    for si = #spinParts, 1, -1 do
+                        if spinParts[si].part == p then
+                            table.remove(spinParts, si)
+                            break
+                        end
+                    end
+                    local targetPlr  = plr
+                    entry.magnetConn = RunService.Heartbeat:Connect(function(dt)
+                        if not (p and p.Parent) then return end
+                        local targetHrp = targetPlr.Character and targetPlr.Character:FindFirstChild("HumanoidRootPart")
+                        if not targetHrp then return end
+                        local toPlayer = targetHrp.Position - p.Position
+                        local d        = toPlayer.Magnitude
+                        local speed    = FRAG_MAGNET_SPEED * (1 + (Config.ORE_MAGNET_RADIUS - d) / Config.ORE_MAGNET_RADIUS * 3)
+                        local step     = math.min(d, speed * dt)
+                        p.CFrame       = CFrame.new(p.Position + toPlayer.Unit * step)
+                    end)
                 end
             end
         end

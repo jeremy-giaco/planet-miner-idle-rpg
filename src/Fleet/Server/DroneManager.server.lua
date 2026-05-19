@@ -468,7 +468,7 @@ local function deliverCargo(drone)
         for _, player in ipairs(playerList) do
             collectFragmentEvent:FireClient(player, item.name, 1, nil)
             addMaterial(player, item.name, 1)
-            if _G.PlayerData then _G.PlayerData.addMaterial(player, item.name, 1) end
+            if _G.PlayerData and _G.PlayerData.addMaterial then _G.PlayerData.addMaterial(player, item.name, 1) end
         end
         binDeltas[item.name] = (binDeltas[item.name] or 0) + 1
     end

@@ -9,12 +9,6 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Config   = require(ReplicatedStorage:WaitForChild("Config"))
 local WorldGen = require(ServerScriptService:WaitForChild("WorldGen"))
 
--- ── Collision groups ──────────────────────────────────────────────────────────
--- "DebrisShield" stops Debris chunks but is invisible to players & ships.
-pcall(function()
-    PhysicsService:RegisterCollisionGroup("DebrisShield")
-    PhysicsService:CollisionGroupSetCollidable("DebrisShield", "Default", false)
-end)
 
 -- ── Lighting ─────────────────────────────────────────────────────────────────
 
@@ -181,8 +175,9 @@ print("[GameSetup] Base done")
 WorldGen.buildHangar()
 print("[GameSetup] Hangar done")
 
-WorldGen.buildDebrisShield()
-print("[GameSetup] Debris shield done")
+WorldGen.buildHelipad()
+print("[GameSetup] Helipad done")
+
 
 WorldGen.buildStorageRoom()
 print("[GameSetup] Storage room done")

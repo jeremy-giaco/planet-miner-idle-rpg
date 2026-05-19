@@ -53,6 +53,9 @@
       "ShipSpawner": {
         "$path": "src/Fleet/Server/ShipSpawner.server.lua"
       },
+      "AdminManager": {
+        "$path": "src/Admin/Server/AdminManager.server.lua"
+      },
     },
     "StarterPlayer": {
       "$className": "StarterPlayer",
@@ -84,6 +87,9 @@
         },
         "AutoEquip": {
           "$path": "src/Character/Client/AutoEquip.client.lua"
+        },
+        "MovementToggle": {
+          "$path": "src/Character/Client/MovementToggle.client.lua"
         }
       }
     },
@@ -145,8 +151,8 @@
       }
     },
     "StarterGui": {
-      "Sidebar": {
-        "$path": "src/UI/HUD/Sidebar.client.lua"
+      "TopNav": {
+        "$path": "src/UI/HUD/TopNav.client.lua"
       },
       "Hotbar": {
         "$path": "src/UI/HUD/Hotbar.client.lua"
@@ -159,6 +165,9 @@
       },
       "SettingsMenu": {
         "$path": "src/UI/Menus/SettingsMenu.client.lua"
+      },
+      "AdminConsole": {
+        "$path": "src/Admin/Client/AdminConsole.client.lua"
       }
     }
   }
