@@ -10,15 +10,17 @@ local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService      = game:GetService("TweenService")
 
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
+
 local tool   = script.Parent
 local player = Players.LocalPlayer
 
-local SHIELD_RADIUS   = 8     -- studs — bubble size
-local ENERGY_MAX      = 100
-local ENERGY_DRAIN    = 6     -- per debris chunk destroyed (~16 kills per charge)
-local RECHARGE_RATE   = 20    -- energy per second while unequipped
-local SHOOT_INTERVAL  = 0.08  -- seconds between scan ticks
-local MAX_HITS_PER_TICK = 3   -- chunks destroyed per tick (handles clusters)
+-- Live-tunable helpers (admin console updates _G.LiveConfig)
+local function live(key) return (_G.LiveConfig and _G.LiveConfig[key]) or Config[key] end
+
+local SHOOT_INTERVAL    = 0.08  -- seconds between scan ticks
+local MAX_HITS_PER_TICK = 3     -- chunks destroyed per tick (handles clusters)
+-- NOTE: SHIELD_RADIUS, ENERGY_MAX, ENERGY_DRAIN, RECHARGE_RATE now read live each tick
 
 local SHIELD_COLOR = Color3.fromRGB(80, 200, 255)
 local HIT_COLOR    = Color3.fromRGB(255, 100, 100)
@@ -28,7 +30,7 @@ local hitDebrisEvent = remotes:WaitForChild("HitDebris")
 
 local character, hrp
 
-local energy       = ENERGY_MAX
+local energy       = Config.SHIELD_ENERGY_MAX   -- seeded from config; live() used at runtime
 local active       = false
 local pulseT       = 0
 local shootTimer   = 0
@@ -42,9 +44,10 @@ local energyFill, energyLabel, shieldFrame
 -- ── Bubble visuals ────────────────────────────────────────────────────────────
 
 local function makeSphere(radius, color, transparency)
+    local r = radius or live("SHIELD_RADIUS")
     local p = Instance.new("Part")
     p.Shape       = Enum.PartType.Ball
-    p.Size        = Vector3.new(radius * 2, radius * 2, radius * 2)
+    p.Size        = Vector3.new(r * 2, r * 2, r * 2)
     p.CFrame      = hrp.CFrame
     p.Color       = color
     p.Material    = Enum.Material.Neon
@@ -61,16 +64,15 @@ local function makeSphere(radius, color, transparency)
 end
 
 local function buildBubble()
+    local r = live("SHIELD_RADIUS")
     shieldParts = {}
-    outerSphere = makeSphere(SHIELD_RADIUS,
-        SHIELD_COLOR, 0.80)
-    innerSphere = makeSphere(SHIELD_RADIUS - 2,
-        Color3.fromRGB(120, 220, 255), 0.93)
+    outerSphere = makeSphere(r,     SHIELD_COLOR, 0.80)
+    innerSphere = makeSphere(r - 2, Color3.fromRGB(120, 220, 255), 0.93)
 
     shieldLight = Instance.new("PointLight")
     shieldLight.Color      = SHIELD_COLOR
     shieldLight.Brightness = 2.5
-    shieldLight.Range      = SHIELD_RADIUS * 2.5
+    shieldLight.Range      = r * 2.5
     shieldLight.Parent     = outerSphere
     table.insert(shieldParts, shieldLight)
 end
@@ -158,7 +160,7 @@ local shieldGui
 
 local function updateEnergyUI()
     if not energyFill then return end
-    local t = math.clamp(energy / ENERGY_MAX, 0, 1)
+    local t = math.clamp(energy / live("SHIELD_ENERGY_MAX"), 0, 1)
     energyFill.Size             = UDim2.new(t, 0, 1, 0)
     energyFill.BackgroundColor3 = Color3.fromRGB(
         math.floor(SHIELD_COLOR.R * 255 * t + 220 * (1 - t)),
@@ -187,13 +189,13 @@ local function deactivate()
     -- Start recharging
     if rechargeConn then rechargeConn:Disconnect() end
     rechargeConn = RunService.Heartbeat:Connect(function(dt)
-        if energy >= ENERGY_MAX then
-            energy = ENERGY_MAX
+        if energy >= live("SHIELD_ENERGY_MAX") then
+            energy = live("SHIELD_ENERGY_MAX")
             updateEnergyUI()
             rechargeConn:Disconnect(); rechargeConn = nil
             return
         end
-        energy = math.min(ENERGY_MAX, energy + RECHARGE_RATE * dt)
+        energy = math.min(live("SHIELD_ENERGY_MAX"), energy + live("SHIELD_RECHARGE_RATE") * dt)
         updateEnergyUI()
     end)
 end
@@ -231,11 +233,11 @@ local function update(dt)
         end
         if chunkPos then
             local approxSize = chunk:IsA("BasePart") and chunk.Size.X or 4
-            local contactDist = SHIELD_RADIUS + approxSize * 0.5
+            local contactDist = live("SHIELD_RADIUS") + approxSize * 0.5
             if (chunkPos - pos).Magnitude < contactDist then
                 hitDebrisEvent:FireServer(chunk)
                 hits += 1
-                energy = math.max(0, energy - ENERGY_DRAIN)
+                energy = math.max(0, energy - live("SHIELD_ENERGY_DRAIN"))
                 updateEnergyUI()
                 flashShield()
                 if energy <= 0 then

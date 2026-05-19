@@ -49,6 +49,13 @@ return {
     JETPACK_MAX_HORIZ_SPEED     = 120,
     JETPACK_ACTIVATION_DELAY    = 0.3,
 
+    -- ── Shield ───────────────────────────────────────────────────────────────
+
+    SHIELD_RADIUS       = 8,     -- bubble radius in studs
+    SHIELD_ENERGY_MAX   = 100,   -- max energy capacity
+    SHIELD_ENERGY_DRAIN = 6,     -- energy lost per debris chunk destroyed
+    SHIELD_RECHARGE_RATE= 20,    -- energy per second while unequipped
+
     -- ── Weapons ──────────────────────────────────────────────────────────────
 
     LASER_DAMAGE    = 100,

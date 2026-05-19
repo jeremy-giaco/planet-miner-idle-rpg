@@ -86,6 +86,15 @@ local SECTIONS = {
         },
     },
     {
+        title = "SHIELD",
+        rows  = {
+            { label = "Radius (studs)",  key = "SHIELD_RADIUS",        step = 1    },
+            { label = "Energy Max",      key = "SHIELD_ENERGY_MAX",    step = 10   },
+            { label = "Drain / Hit",     key = "SHIELD_ENERGY_DRAIN",  step = 1    },
+            { label = "Recharge /s",     key = "SHIELD_RECHARGE_RATE", step = 5    },
+        },
+    },
+    {
         title = "TACHYITE",
         rows  = {
             { label = "Drop Chance",    key = "TACHYITE_DROP_CHANCE",  step = 0.01 },

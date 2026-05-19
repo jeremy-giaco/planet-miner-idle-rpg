@@ -49,6 +49,11 @@ local TUNABLES = {
     DEBRIS_SPAWN_INTERVAL  = { min = 0.5,  max = 60,   isServer = false },
     DEBRIS_SPAWN_PER_WAVE  = { min = 1,    max = 20,   isServer = false },
     DEBRIS_CARGO_CHANCE    = { min = 0,    max = 1,    isServer = false },
+    -- Shield
+    SHIELD_RADIUS          = { min = 4,    max = 40,   isServer = false },
+    SHIELD_ENERGY_MAX      = { min = 10,   max = 1000, isServer = false },
+    SHIELD_ENERGY_DRAIN    = { min = 0,    max = 100,  isServer = false },
+    SHIELD_RECHARGE_RATE   = { min = 1,    max = 500,  isServer = false },
     -- Tachyite
     TACHYITE_DROP_CHANCE   = { min = 0,    max = 1,    isServer = false },
     TACHYITE_SPEED_BONUS   = { min = 0,    max = 200,  isServer = false },
