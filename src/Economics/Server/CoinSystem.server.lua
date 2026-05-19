@@ -20,8 +20,12 @@ local oreFolder = Instance.new("Folder")
 oreFolder.Name   = "Ores"
 oreFolder.Parent = Workspace
 
-local SPAWN_INTERVAL = 6
-local MAX_ORES       = 18
+local SPAWN_INTERVAL  = 6
+local MAX_ORES        = 18
+local COLLECT_RADIUS  = 8   -- studs — walk-over pickup distance
+
+-- Active ore registry for proximity collection
+local activeOres = {}   -- { part, metal }
 
 -- ── Weighted random metal picker ──────────────────────────────────────────────
 
@@ -90,24 +94,8 @@ local function spawnOre()
         ore.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(spinAngle), 0)
     end)
 
-    -- Player walk-over collection
-    ore.Touched:Connect(function(hit)
-        if not ore.Parent then return end
-        local char = hit.Parent
-        if not char or not char:FindFirstChildOfClass("Humanoid") then return end
-        local player = Players:GetPlayerFromCharacter(char)
-        if not player then return end
-        conn:Disconnect()
-        ore:Destroy()
-        if _G.PlayerData then
-            _G.PlayerData.addMaterial(player, metal.name, 1)
-            _G.PlayerData.addXP(player, 15)
-        end
-        collectFragmentEvent:FireClient(player, metal.name, 1, ore.Position)
-        materialEarned:Fire(player, metal.name, 1)
-    end)
-
-    -- Register with rover
+    -- Register for proximity collection and rover pickup
+    table.insert(activeOres, { part = ore, metal = metal, conn = conn })
     registerCollectible:Fire(ore, "Metal", metal.name)
 
     -- Despawn if uncollected after 60s
@@ -124,6 +112,41 @@ end
 
 -- ── Spawn loop ────────────────────────────────────────────────────────────────
 
+-- ── Proximity collection loop ─────────────────────────────────────────────────
+
+task.spawn(function()
+    while true do
+        task.wait(0.2)
+        for i = #activeOres, 1, -1 do
+            local entry = activeOres[i]
+            local ore   = entry.part
+            if not (ore and ore.Parent) then
+                table.remove(activeOres, i)
+                continue
+            end
+            for _, plr in ipairs(Players:GetPlayers()) do
+                local char = plr.Character
+                local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp and (hrp.Position - ore.Position).Magnitude <= COLLECT_RADIUS then
+                    local worldPos = ore.Position
+                    entry.conn:Disconnect()
+                    table.remove(activeOres, i)
+                    ore:Destroy()
+                    if _G.PlayerData then
+                        _G.PlayerData.addMaterial(plr, entry.metal.name, 1)
+                        _G.PlayerData.addXP(plr, 15)
+                    end
+                    collectFragmentEvent:FireClient(plr, entry.metal.name, 1, worldPos)
+                    materialEarned:Fire(plr, entry.metal.name, 1)
+                    break
+                end
+            end
+        end
+    end
+end)
+
+-- ── Spawn loop ────────────────────────────────────────────────────────────────
+
 local lastSpawn = 0
 RunService.Heartbeat:Connect(function()
     local now = tick()
@@ -133,4 +156,4 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-print("[SkyBase] Metal ore system active")
+print("[GameSetup] Ore system active")
