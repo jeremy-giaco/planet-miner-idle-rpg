@@ -1,67 +1,38 @@
 -- Script → ServerScriptService/GameSetup
 if not game:GetService("RunService"):IsServer() then return end
-local Lighting          = game:GetService("Lighting")
-local PhysicsService    = game:GetService("PhysicsService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Lighting            = game:GetService("Lighting")
+local PhysicsService      = game:GetService("PhysicsService")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+
+local Config   = require(ReplicatedStorage:WaitForChild("Config"))
+local WorldGen = require(ServerScriptService:WaitForChild("WorldGen"))
 
 -- ── Collision groups ──────────────────────────────────────────────────────────
 -- "DebrisShield" stops Debris chunks but is invisible to players & ships.
 pcall(function()
     PhysicsService:RegisterCollisionGroup("DebrisShield")
-    -- Players, characters, ships are in "Default" — pass straight through the shield
     PhysicsService:CollisionGroupSetCollidable("DebrisShield", "Default", false)
-    -- "Debris" group (registered in DebrisSystem) still collides with DebrisShield (default = true)
 end)
-
-local Config   = require(ReplicatedStorage:WaitForChild("Config"))
-local WorldGen = require(ServerScriptService:WaitForChild("WorldGen"))
-
--- ── Moon world config ─────────────────────────────────────────────────────────
-
-local MOON_CONFIG = {
-    planet = {
-        radius   = Config.PLANET_RADIUS,
-        center   = Config.PLANET_CENTER,
-        color     = Color3.fromRGB(148, 145, 158),   -- dark grey lunar regolith
-        material  = Enum.Material.Granite,
-        -- textureId = "",  -- set to a valid Roblox DecalId for crater surface detail
-    },
-    base = {
-        position  = Vector3.new(0, Config.PLANET_RADIUS - 2, 0),  -- north pole, floor flush with sphere surface
-        width     = 140,
-        depth     = 200,
-        height    = 44,
-        doorWidth = 16,
-        colors = {
-            hull       = Color3.fromRGB(36, 42, 62),
-            panel      = Color3.fromRGB(50, 58, 85),
-            neon       = Color3.fromRGB(60, 150, 255),
-            foundation = Color3.fromRGB(160, 157, 170),
-        },
-    },
-}
-
-local R  = Config.PLANET_RADIUS
-local PC = Config.PLANET_CENTER
 
 -- ── Lighting ─────────────────────────────────────────────────────────────────
 
 local function setupLighting()
     for _, obj in ipairs(Lighting:GetChildren()) do obj:Destroy() end
 
-    Lighting.Ambient                  = Color3.fromRGB(18, 18, 28)    -- very dark space fill
-    Lighting.OutdoorAmbient           = Color3.fromRGB(22, 22, 35)
-    Lighting.Brightness               = 3.5                           -- harsh directional sun
-    Lighting.EnvironmentDiffuseScale  = 0.15                          -- minimal bounce light (no atmosphere)
-    Lighting.EnvironmentSpecularScale = 0.8
-    Lighting.ClockTime                = 6.083  -- 6:05 am
+    Lighting.Ambient                  = Config.LIGHTING_AMBIENT
+    Lighting.OutdoorAmbient           = Config.LIGHTING_OUTDOOR_AMBIENT
+    Lighting.Brightness               = Config.LIGHTING_BRIGHTNESS
+    Lighting.EnvironmentDiffuseScale  = Config.LIGHTING_DIFFUSE_SCALE
+    Lighting.EnvironmentSpecularScale = Config.LIGHTING_SPECULAR_SCALE
+    Lighting.ClockTime                = Config.LIGHTING_CLOCK_TIME
     Lighting.GeographicLatitude       = 90
-    Lighting.FogStart = 4000
-    Lighting.FogEnd   = 7000
-    Lighting.FogColor = Color3.fromRGB(2, 2, 8)     -- deep black space
+    Lighting.FogStart                 = Config.LIGHTING_FOG_START
+    Lighting.FogEnd                   = Config.LIGHTING_FOG_END
+    Lighting.FogColor                 = Config.LIGHTING_FOG_COLOR
 
-    -- No Sky object → Roblox renders a pure black void, letting FogColor/Ambient give the space feel
+    -- No Sky object → Roblox renders a pure black void (space feel)
 
     local bloom = Instance.new("BloomEffect")
     bloom.Intensity = 0.4; bloom.Size = 24; bloom.Threshold = 0.95
@@ -78,9 +49,10 @@ local function setupSpawn()
     for _, s in ipairs(workspace:GetDescendants()) do
         if s:IsA("SpawnLocation") then s:Destroy() end
     end
+    local bp    = Config.BASE_POSITION
     local spawn = Instance.new("SpawnLocation")
     spawn.Size     = Vector3.new(6, 1, 6)
-    spawn.Position = Vector3.new(0, R - 1, 0)   -- flush with base floor (BY-2+3=R+1)
+    spawn.Position = Vector3.new(bp.X, Config.MAP_GROUND_Y + 3, bp.Z)
     spawn.Anchored = true; spawn.Neutral = true
     spawn.AllowTeamChangeOnTouch = false
     spawn.Duration = 0; spawn.Transparency = 1
@@ -184,46 +156,46 @@ local function createDroneStation()
         light(cap, (i % 2 == 0) and NB or NG, 1.5, 18)
     end
 
-    print("[SkyBase] Drone station built")
+    print("[GameSetup] Drone station built")
 end
 
--- ── Run ──────────────────────────────────────────────────────────────────────
+-- ── Run ───────────────────────────────────────────────────────────────────────
 
-workspace.Gravity = 196.2   -- default Roblox gravity; jetpack handles upward thrust separately
+workspace.Gravity = Config.GRAVITY
 
 pcall(function() workspace.Terrain:Clear() end)
 local bp = workspace:FindFirstChild("Baseplate")
 if bp then bp:Destroy() end
 
-print("[SkyBase] GameSetup starting...")
+print("[GameSetup] Starting flat-map world build...")
 
 setupLighting()
-print("[SkyBase] Lighting done")
+print("[GameSetup] Lighting done")
 
-WorldGen.buildPlanet(MOON_CONFIG)
-print("[SkyBase] Planet built")
+WorldGen.buildGround()
+print("[GameSetup] Ground done")
 
-WorldGen.buildBase(MOON_CONFIG)
-print("[SkyBase] Base built")
+WorldGen.buildBase()
+print("[GameSetup] Base done")
 
-WorldGen.buildHangar(MOON_CONFIG)
-print("[SkyBase] Hangar built")
+WorldGen.buildHangar()
+print("[GameSetup] Hangar done")
 
-WorldGen.buildDebrisShield(MOON_CONFIG)
-print("[SkyBase] Debris shield built")
+WorldGen.buildDebrisShield()
+print("[GameSetup] Debris shield done")
 
-WorldGen.buildStorageRoom(MOON_CONFIG)
-print("[SkyBase] Storage room built")
+WorldGen.buildStorageRoom()
+print("[GameSetup] Storage room done")
 
 -- Beacon towers at compass points around the base
 local NB_COLOR = Color3.fromRGB(60, 150, 255)
-WorldGen.buildBeacon(MOON_CONFIG,  160, 0,    NB_COLOR)
-WorldGen.buildBeacon(MOON_CONFIG, -160, 0,    NB_COLOR)
-WorldGen.buildBeacon(MOON_CONFIG,  0,   160,  NB_COLOR)
--- beacon at (0,-160) removed — it was directly in front of the hangar bay door
-print("[SkyBase] Beacons built")
+WorldGen.buildBeacon( 160,   0, NB_COLOR)
+WorldGen.buildBeacon(-160,   0, NB_COLOR)
+WorldGen.buildBeacon(   0, 160, NB_COLOR)
+-- beacon at (0,-160) omitted — directly in front of hangar bay door
+print("[GameSetup] Beacons done")
 
 setupSpawn()
 createDroneStation()
 
-print("[SkyBase] Done")
+print("[GameSetup] Done")
