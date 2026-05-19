@@ -16,8 +16,7 @@ return {
     },
 
     -- ── Cargo / Inventory ─────────────────────────────────────────────────────
-    fragments = {},  -- { Rock=0, Metal=0, Crystal=0, Ice=0 }
-    metals    = {},  -- { Iron=0, Copper=0, Silver=0, Gold=0, Titanium=0 }
+    materials = {},  -- unified: { Iron=0, Carbon=0, Crystal=0, ... } (Config.MATERIALS)
     coins     = 0,
 
     -- ── Loadout ───────────────────────────────────────────────────────────────

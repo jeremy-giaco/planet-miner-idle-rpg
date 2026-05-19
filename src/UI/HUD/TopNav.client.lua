@@ -1,4 +1,4 @@
--- LocalScript → StarterGui/Sidebar
+-- LocalScript → StarterGui/TopNav
 -- Three independent popdown buttons at top of screen (right of Roblox buttons).
 if not game:GetService("RunService"):IsClient() then return end
 
@@ -11,16 +11,17 @@ local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local camera    = workspace.CurrentCamera
 
+local Config               = require(ReplicatedStorage:WaitForChild("Config"))
+local ClientSettings       = require(ReplicatedStorage:WaitForChild("ClientSettings"))
+
 local remotes              = ReplicatedStorage:WaitForChild("Remotes")
 local setDroneModeEvent    = remotes:WaitForChild("SetDroneMode")
 local droneHealthEvent     = remotes:WaitForChild("DroneHealthUpdate")
 local collectFragmentEvent = remotes:WaitForChild("CollectFragment")
-local collectMetalEvent    = remotes:WaitForChild("CollectMetal")
-local deductMetalEvent     = remotes:WaitForChild("DeductMetal")
+local spendMaterialEvent   = remotes:WaitForChild("SpendMaterial")
 local loadSettings         = remotes:WaitForChild("LoadSettings")
 local loadInventory        = remotes:WaitForChild("LoadInventory")
 local saveSettings         = remotes:WaitForChild("SaveSettings")
-local ClientSettings       = require(ReplicatedStorage:WaitForChild("ClientSettings"))
 
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
@@ -45,7 +46,7 @@ local ROBLOX_RESERVED = 196
 -- ── Screen GUI ────────────────────────────────────────────────────────────────
 
 local sg = Instance.new("ScreenGui")
-sg.Name = "Sidebar"; sg.ResetOnSpawn = false
+sg.Name = "TopNav"; sg.ResetOnSpawn = false
 sg.IgnoreGuiInset = true
 sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 sg.Parent = playerGui
@@ -296,114 +297,174 @@ end)
 local droneTabBtn = makeTabBtn("🤖","DRONES",1,dronePopup,droneToggle,droneClose)
 
 -- ══════════════════════════════════════════════════════════════════════════════
--- CARGO  — all resource types always shown, icon dot + name + qty
+-- CARGO  — all 10 materials always shown, grouped by rarity, qty highlights
 -- ══════════════════════════════════════════════════════════════════════════════
 
--- Fragment types + metal types always shown even at 0
-local RESOURCE_DEFS = {
-    -- Fragments
-    { key="f_Rock",     label="Rock",     color=Color3.fromRGB(130,100, 70), kind="fragment" },
-    { key="f_Metal",    label="Metal",    color=Color3.fromRGB(160,165,185), kind="fragment" },
-    { key="f_Crystal",  label="Crystal",  color=Color3.fromRGB(130, 75,240), kind="fragment" },
-    { key="f_Ice",      label="Ice",      color=Color3.fromRGB(150,200,255), kind="fragment" },
-    -- Metals
-    { key="m_Iron",     label="Iron",     color=Color3.fromRGB(140,130,120), kind="metal" },
-    { key="m_Copper",   label="Copper",   color=Color3.fromRGB(210,105, 55), kind="metal" },
-    { key="m_Silver",   label="Silver",   color=Color3.fromRGB(200,205,220), kind="metal" },
-    { key="m_Gold",     label="Gold",     color=Color3.fromRGB(220,170, 20), kind="metal" },
-    { key="m_Titanium", label="Titanium", color=Color3.fromRGB(155,175,200), kind="metal" },
-}
+-- Build rarity color lookup from Config
+local RARITY_COLOR = {}
+for _, r in ipairs(Config.RARITIES) do RARITY_COLOR[r.name] = r.color end
 
-local CARGO_ROW_H = 22
--- 9 resources + section divider line ≈ 9×25 + 16 = 241 → round up
-local cargoPopup, cargoScroll, cargoToggle, cargoClose = makePopup(246)
-
-local inventory = { fragments={}, metals={} }
-local qtyLabels = {}   -- [key] = TextLabel showing qty
-
--- Build all slots once (always present)
-for order, def in ipairs(RESOURCE_DEFS) do
-    local row = Instance.new("Frame")
-    row.Size=UDim2.new(1,0,0,CARGO_ROW_H); row.BackgroundTransparency=1
-    row.BorderSizePixel=0; row.LayoutOrder=order; row.Parent=cargoScroll
-
-    -- Coloured dot
-    local dot=Instance.new("Frame")
-    dot.Size=UDim2.new(0,10,0,10); dot.Position=UDim2.new(0,0,0.5,-5)
-    dot.BackgroundColor3=def.color; dot.BorderSizePixel=0; dot.Parent=row
-    corner(dot,5)
-
-    -- Resource name
-    local name=Instance.new("TextLabel")
-    name.Text=def.label; name.Size=UDim2.new(0.65,0,1,0)
-    name.Position=UDim2.new(0,16,0,0)
-    name.BackgroundTransparency=1; name.TextColor3=TEXT
-    name.TextSize=12; name.Font=Enum.Font.GothamBold
-    name.TextXAlignment=Enum.TextXAlignment.Left; name.Parent=row
-
-    -- Qty (right-aligned)
-    local qty=Instance.new("TextLabel")
-    qty.Name="Qty"; qty.Text="0"; qty.Size=UDim2.new(0.3,0,1,0)
-    qty.Position=UDim2.new(0.7,0,0,0)
-    qty.BackgroundTransparency=1; qty.TextColor3=DIM
-    qty.TextSize=12; qty.Font=Enum.Font.GothamBold
-    qty.TextXAlignment=Enum.TextXAlignment.Right; qty.Parent=row
-
-    qtyLabels[def.key] = qty
+-- Build ordered material list with rarity grouping
+-- Each entry: { name, color, rarity }
+local RARITY_ORDER = { "Common", "Uncommon", "Rare", "Exotic" }
+local MATERIAL_GROUPS = {}   -- { rarityName, items[] }
+do
+    local buckets = {}
+    for _, m in ipairs(Config.MATERIALS) do
+        if not buckets[m.rarity] then buckets[m.rarity] = {} end
+        table.insert(buckets[m.rarity], m)
+    end
+    for _, rName in ipairs(RARITY_ORDER) do
+        if buckets[rName] then
+            table.insert(MATERIAL_GROUPS, { rarity = rName, items = buckets[rName] })
+        end
+    end
 end
+
+-- Calculate popup height: rarity headers (14px) + material rows (22px) + padding
+local CARGO_ROW_H   = 22
+local CARGO_HDR_H   = 14
+local totalRows     = #Config.MATERIALS
+local totalHeaders  = #MATERIAL_GROUPS
+local cargoH        = totalRows * (CARGO_ROW_H + 3) + totalHeaders * (CARGO_HDR_H + 3) + 16
+local cargoPopup, cargoScroll, cargoToggle, cargoClose = makePopup(math.min(cargoH, 320))
+
+local inventory  = {}     -- [matName] = qty
+local qtyLabels  = {}     -- [matName] = TextLabel
+
+-- Build all slots (always present, always visible)
+local layoutOrder = 0
+for _, group in ipairs(MATERIAL_GROUPS) do
+    -- Rarity header
+    local hdr = Instance.new("TextLabel")
+    hdr.Text               = group.rarity:upper()
+    hdr.Size               = UDim2.new(1,0,0,CARGO_HDR_H)
+    hdr.BackgroundTransparency = 1
+    hdr.TextColor3         = RARITY_COLOR[group.rarity] or DIM
+    hdr.TextSize           = 10
+    hdr.Font               = Enum.Font.GothamBold
+    hdr.TextXAlignment     = Enum.TextXAlignment.Left
+    hdr.LayoutOrder        = layoutOrder
+    hdr.Parent             = cargoScroll
+    layoutOrder += 1
+
+    for _, mat in ipairs(group.items) do
+        local row = Instance.new("Frame")
+        row.Size               = UDim2.new(1,0,0,CARGO_ROW_H)
+        row.BackgroundTransparency = 1
+        row.BorderSizePixel    = 0
+        row.LayoutOrder        = layoutOrder
+        row.Parent             = cargoScroll
+        layoutOrder += 1
+
+        local dot = Instance.new("Frame")
+        dot.Size               = UDim2.new(0,8,0,8)
+        dot.Position           = UDim2.new(0,0,0.5,-4)
+        dot.BackgroundColor3   = mat.color
+        dot.BorderSizePixel    = 0
+        dot.Parent             = row
+        corner(dot,4)
+
+        local nameLbl = Instance.new("TextLabel")
+        nameLbl.Text           = mat.name
+        nameLbl.Size           = UDim2.new(0.65,-14,1,0)
+        nameLbl.Position       = UDim2.new(0,14,0,0)
+        nameLbl.BackgroundTransparency = 1
+        nameLbl.TextColor3     = TEXT
+        nameLbl.TextSize       = 12
+        nameLbl.Font           = Enum.Font.GothamBold
+        nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+        nameLbl.Parent         = row
+
+        local qtyLbl = Instance.new("TextLabel")
+        qtyLbl.Name            = "Qty"
+        qtyLbl.Text            = "0"
+        qtyLbl.Size            = UDim2.new(0.35,0,1,0)
+        qtyLbl.Position        = UDim2.new(0.65,0,0,0)
+        qtyLbl.BackgroundTransparency = 1
+        qtyLbl.TextColor3      = DIM
+        qtyLbl.TextSize        = 12
+        qtyLbl.Font            = Enum.Font.GothamBold
+        qtyLbl.TextXAlignment  = Enum.TextXAlignment.Right
+        qtyLbl.Parent          = row
+
+        qtyLabels[mat.name] = qtyLbl
+    end
+end
+
+local cargoTabBtn  -- forward ref, set after makeTabBtn call
 
 local function updateCargo()
-    for _, def in ipairs(RESOURCE_DEFS) do
-        local qty = 0
-        if def.kind=="fragment" then
-            qty = inventory.fragments[def.label] or 0
-        else
-            qty = inventory.metals[def.label] or 0
-        end
-        local lbl = qtyLabels[def.key]
-        if lbl then
-            lbl.Text = tostring(qty)
-            lbl.TextColor3 = qty>0 and Color3.fromRGB(255,240,130) or DIM
+    local hasAny = false
+    for _, group in ipairs(MATERIAL_GROUPS) do
+        local rc = RARITY_COLOR[group.rarity] or DIM
+        for _, mat in ipairs(group.items) do
+            local qty = inventory[mat.name] or 0
+            local lbl = qtyLabels[mat.name]
+            if lbl then
+                lbl.Text       = tostring(qty)
+                lbl.TextColor3 = qty > 0 and rc or DIM
+            end
+            if qty > 0 then hasAny = true end
         end
     end
-    -- Glow cargo tab when carrying anything
-    local has = next(inventory.fragments)~=nil or next(inventory.metals)~=nil
-    -- find cargo tab btn (set in makeTabBtn, stored below)
+    -- Highlight cargo tab when carrying something
+    if cargoTabBtn then
+        cargoTabBtn.TextColor3 = hasAny
+            and Color3.fromRGB(255, 240, 100)
+            or  Color3.fromRGB(255, 255, 255)
+    end
 end
 
-local function makeToast(text,color,worldPos)
-    local sx,sy=0.5,0.5
+local function makeToast(text, color, worldPos)
+    local sx, sy = 0.5, 0.5
     if worldPos then
-        local sp,on=camera:WorldToScreenPoint(worldPos)
-        if on then local vp=camera.ViewportSize; sx=sp.X/vp.X; sy=sp.Y/vp.Y end
+        local sp, on = camera:WorldToScreenPoint(worldPos)
+        if on then
+            local vp = camera.ViewportSize
+            sx = sp.X / vp.X; sy = sp.Y / vp.Y
+        end
     end
-    local t=Instance.new("TextLabel")
-    t.Text=text; t.Size=UDim2.new(0,180,0,32); t.Position=UDim2.new(sx,-90,sy,-16)
-    t.BackgroundTransparency=1; t.TextColor3=color; t.TextTransparency=0.1; t.TextSize=20
-    t.Font=Enum.Font.GothamBold; t.TextStrokeColor3=Color3.new(0,0,0)
-    t.TextStrokeTransparency=0.45; t.Parent=sg
-    TweenService:Create(t,TweenInfo.new(1.2,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{
-        TextTransparency=1,TextStrokeTransparency=1,Position=UDim2.new(sx,-90,sy-0.06,-16),
+    local t = Instance.new("TextLabel")
+    t.Text = text; t.Size = UDim2.new(0,180,0,32)
+    t.Position = UDim2.new(sx,-90,sy,-16)
+    t.BackgroundTransparency = 1; t.TextColor3 = color
+    t.TextTransparency = 0.1; t.TextSize = 20
+    t.Font = Enum.Font.GothamBold
+    t.TextStrokeColor3 = Color3.new(0,0,0); t.TextStrokeTransparency = 0.45
+    t.Parent = sg
+    TweenService:Create(t, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        TextTransparency=1, TextStrokeTransparency=1,
+        Position=UDim2.new(sx,-90,sy-0.06,-16),
     }):Play()
-    task.delay(1.2,function() if t and t.Parent then t:Destroy() end end)
+    task.delay(1.2, function() if t and t.Parent then t:Destroy() end end)
 end
 
-collectFragmentEvent.OnClientEvent:Connect(function(ft,qty,wp)
-    inventory.fragments[ft]=(inventory.fragments[ft] or 0)+(qty or 1)
-    updateCargo(); makeToast("+"..( qty or 1).." "..ft, Color3.fromRGB(200,200,255), wp)
+collectFragmentEvent.OnClientEvent:Connect(function(matName, qty, worldPos)
+    local amount = qty or 1
+    inventory[matName] = (inventory[matName] or 0) + amount
+    updateCargo()
+    -- Use rarity color for toast if known
+    local rc = Color3.fromRGB(200, 200, 255)
+    for _, m in ipairs(Config.MATERIALS) do
+        if m.name == matName then
+            rc = RARITY_COLOR[m.rarity] or rc; break
+        end
+    end
+    makeToast("+" .. amount .. " " .. matName, rc, worldPos)
 end)
-collectMetalEvent.OnClientEvent:Connect(function(name)
-    inventory.metals[name]=(inventory.metals[name] or 0)+1
-    updateCargo(); makeToast("+ "..name, Color3.fromRGB(255,210,50))
+
+spendMaterialEvent.OnClientEvent:Connect(function(matName, qty)
+    local amount = qty or 1
+    local current = inventory[matName] or 0
+    inventory[matName] = math.max(0, current - amount)
+    updateCargo()
+    makeToast("-" .. amount .. " " .. matName, Color3.fromRGB(220, 80, 80))
 end)
-deductMetalEvent.OnClientEvent:Connect(function(name)
-    local c=inventory.metals[name] or 0
-    inventory.metals[name]=c<=1 and nil or c-1
-    updateCargo(); makeToast("- "..name, Color3.fromRGB(200,80,80))
-end)
+
 updateCargo()
 
-local cargoTabBtn = makeTabBtn("📦","CARGO",2,cargoPopup,cargoToggle,cargoClose)
+cargoTabBtn = makeTabBtn("📦","CARGO",2,cargoPopup,cargoToggle,cargoClose)
 
 -- ══════════════════════════════════════════════════════════════════════════════
 -- SETTINGS
@@ -516,16 +577,18 @@ loadSettings.OnClientEvent:Connect(function(settings)
     end
 end)
 
-loadInventory.OnClientEvent:Connect(function(fragments, metals)
-    for k,v in pairs(fragments) do
-        if v and v > 0 then inventory.fragments[k] = v end
+loadInventory.OnClientEvent:Connect(function(savedInventory)
+    -- savedInventory is a flat dict: { Iron=5, Copper=2, ... }
+    if type(savedInventory) == "table" then
+        for matName, qty in pairs(savedInventory) do
+            if type(qty) == "number" and qty > 0 then
+                inventory[matName] = qty
+            end
+        end
+        updateCargo()
     end
-    for k,v in pairs(metals) do
-        if v and v > 0 then inventory.metals[k] = v end
-    end
-    updateCargo()
 end)
 
 makeTabBtn("⚙","SETTINGS",3,settingsPopup,settingsToggle,settingsClose)
 
-print("[Sidebar] Active")
+print("[TopNav] Active")

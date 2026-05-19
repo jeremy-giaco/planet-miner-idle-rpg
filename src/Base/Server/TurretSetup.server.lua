@@ -1,36 +1,94 @@
--- Script → place in ServerScriptService, rename to "TurretSetup"
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- Script → ServerScriptService/TurretSetup
+-- Builds the rooftop defence turret on top of the main base building.
+if not game:GetService("RunService"):IsServer() then return end
 
--- Flat world: compound top surface is at Y=3
-local basePos = Vector3.new(0, 0, 0)  -- XZ center of compound
-local topY    = 3                      -- Y = top surface of the Compound slab
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Config = require(ReplicatedStorage:WaitForChild("Config"))
+
+-- ── Position: roof centre ─────────────────────────────────────────────────────
+-- Base ceiling slab: centre Y = H + 2.5, thickness 5 → top surface = H + 5
+local bp   = Config.BASE_POSITION
+local H    = Config.BASE_HEIGHT          -- 44
+local ROOF_Y = H + 5                     -- 49  (top of glass ceiling slab)
+
+local cx, cz = bp.X, bp.Z               -- directly above lobby centre
+
+-- Turret sits on a raised octagonal platform so it clears the spire bases
+-- and gives the gunner a commanding view over all four spires.
+local PEDESTAL_H = 8
+local cy = ROOF_Y + PEDESTAL_H          -- base of the seat ring
 
 local NEON  = Color3.fromRGB(90, 50, 220)
 local METAL = Color3.fromRGB(45, 52, 78)
 local DARK  = Color3.fromRGB(28, 32, 50)
+local NEON2 = Color3.fromRGB(0, 200, 255)
 
 local function anchoredPart(name, size, cframe, color, material, parent)
     local p = Instance.new("Part")
-    p.Name     = name
-    p.Size     = size
-    p.CFrame   = cframe
-    p.Anchored = true
-    p.Color    = color
-    p.Material = material or Enum.Material.Metal
+    p.Name       = name
+    p.Size       = size
+    p.CFrame     = cframe
+    p.Anchored   = true
+    p.CanCollide = true
     p.CastShadow = true
-    p.Parent   = parent
+    p.Color      = color
+    p.Material   = material or Enum.Material.Metal
+    p.Parent     = parent
     return p
 end
 
--- ── Model ────────────────────────────────────────────────────────────────────
+local function addLight(parent, color, brightness, range)
+    local l = Instance.new("PointLight")
+    l.Color = color; l.Brightness = brightness; l.Range = range
+    l.Parent = parent
+end
+
+-- ── Model ─────────────────────────────────────────────────────────────────────
 
 local model = Instance.new("Model")
 model.Name   = "Turret"
 model.Parent = workspace
 
-local cx, cy, cz = basePos.X, topY, basePos.Z  -- center of platform top
+-- Pedestal (raised octagonal platform on the roof)
+local pedBody = anchoredPart("PedestalBody",
+    Vector3.new(10, PEDESTAL_H, 10),
+    CFrame.new(cx, ROOF_Y + PEDESTAL_H/2, cz),
+    METAL, Enum.Material.Metal, model)
 
--- Rotating ring / base plate
+local pedTop = anchoredPart("PedestalTop",
+    Vector3.new(12, 0.5, 12),
+    CFrame.new(cx, ROOF_Y + PEDESTAL_H + 0.25, cz),
+    DARK, Enum.Material.SmoothPlastic, model)
+
+-- Neon edge strip on platform rim
+local rim = anchoredPart("PedestalRim",
+    Vector3.new(12.2, 0.25, 12.2),
+    CFrame.new(cx, ROOF_Y + PEDESTAL_H + 0.6, cz),
+    NEON, Enum.Material.Neon, model)
+rim.CanCollide = false
+addLight(rim, NEON, 1.5, 30)
+
+-- Neon corner posts on pedestal
+for _, xz in ipairs({{-5,-5},{5,-5},{-5,5},{5,5}}) do
+    local post = anchoredPart("Post",
+        Vector3.new(0.6, PEDESTAL_H + 0.5, 0.6),
+        CFrame.new(cx + xz[1], ROOF_Y + PEDESTAL_H/2, cz + xz[2]),
+        NEON2, Enum.Material.Neon, model)
+    post.CanCollide = false
+    addLight(post, NEON2, 0.8, 14)
+end
+
+-- Access ladder (visual only, decorative)
+for i = 0, PEDESTAL_H - 1 do
+    local rung = anchoredPart("Rung",
+        Vector3.new(1.8, 0.18, 0.18),
+        CFrame.new(cx + 5, ROOF_Y + i + 0.6, cz),
+        METAL, Enum.Material.Metal, model)
+    rung.CanCollide = false
+    rung.CastShadow = false
+end
+
+-- Rotating ring / swivel base
 local ring = anchoredPart("Ring",
     Vector3.new(5, 0.3, 5),
     CFrame.new(cx, cy + 0.15, cz),
@@ -43,7 +101,7 @@ local base = anchoredPart("SwivelBase",
     CFrame.new(cx, cy + 0.6, cz),
     METAL, Enum.Material.Metal, model)
 
--- Chair seat (real Seat instance so Roblox handles the sit animation)
+-- Chair seat
 local seat = Instance.new("Seat")
 seat.Name      = "GunnerSeat"
 seat.Size      = Vector3.new(2.2, 0.25, 1.8)
@@ -73,7 +131,7 @@ for _, s in ipairs({-1, 1}) do
         METAL, Enum.Material.Metal, model)
 end
 
--- Barrel pivot (where the barrel rotates from)
+-- Barrel pivot
 local pivot = anchoredPart("BarrelPivot",
     Vector3.new(0.5, 0.5, 0.5),
     CFrame.new(cx, cy + 2.0, cz - 1.2),
@@ -81,19 +139,19 @@ local pivot = anchoredPart("BarrelPivot",
 pivot.CanCollide = false
 
 -- Barrel
-local barrel = anchoredPart("Barrel",
+anchoredPart("Barrel",
     Vector3.new(0.28, 0.28, 5),
     CFrame.new(cx, cy + 2.0, cz - 3.7),
     METAL, Enum.Material.Metal, model)
 
--- Barrel tip (neon, where beam fires from)
+-- Barrel tip
 local tip = anchoredPart("BarrelTip",
     Vector3.new(0.38, 0.38, 0.2),
     CFrame.new(cx, cy + 2.0, cz - 6.2),
     Color3.fromRGB(0, 230, 120), Enum.Material.Neon, model)
 tip.CanCollide = false
 
--- Eye point — camera anchors here when seated
+-- Eye point (camera anchor when seated)
 local eye = Instance.new("Part")
 eye.Name         = "EyePoint"
 eye.Size         = Vector3.new(0.1, 0.1, 0.1)
@@ -103,14 +161,14 @@ eye.CanCollide   = false
 eye.Transparency = 1
 eye.Parent       = model
 
--- ── ProximityPrompt ──────────────────────────────────────────────────────────
+-- ── ProximityPrompt ───────────────────────────────────────────────────────────
 
 local prompt = Instance.new("ProximityPrompt")
 prompt.ActionText             = "Man Turret"
-prompt.ObjectText             = "Gunner Seat"
+prompt.ObjectText             = "Rooftop Turret"
 prompt.KeyboardKeyCode        = Enum.KeyCode.E
 prompt.HoldDuration           = 0
-prompt.MaxActivationDistance  = 8
+prompt.MaxActivationDistance  = 10
 prompt.Parent                 = base
 
 prompt.Triggered:Connect(function(player)
@@ -120,10 +178,9 @@ prompt.Triggered:Connect(function(player)
     if hum then seat:Sit(hum) end
 end)
 
--- Disable prompt while occupied so E doesn't re-trigger
 seat:GetPropertyChangedSignal("Occupant"):Connect(function()
     prompt.Enabled = seat.Occupant == nil
 end)
 
 model.PrimaryPart = base
-print("[SkyBase] Turret ready")
+print("[TurretSetup] Rooftop turret ready at Y=" .. cy)

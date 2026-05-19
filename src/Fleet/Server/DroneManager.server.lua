@@ -12,28 +12,28 @@ local Config = require(ReplicatedStorage:WaitForChild("Config"))
 
 local remotes              = ReplicatedStorage:WaitForChild("Remotes")
 local collectFragmentEvent = remotes:WaitForChild("CollectFragment")
-local collectMetalEvent    = remotes:WaitForChild("CollectMetal")
+local spendMaterialEvent   = remotes:WaitForChild("SpendMaterial")
 local setDroneModeEvent    = remotes:WaitForChild("SetDroneMode")
-local deductMetalEvent     = remotes:WaitForChild("DeductMetal")
 local droneHealthEvent     = remotes:WaitForChild("DroneHealthUpdate")
 local serverHitDebris      = remotes:WaitForChild("ServerHitDebris")
-local serverMetalEarned    = remotes:WaitForChild("ServerMetalEarned")
+local materialEarned       = remotes:WaitForChild("MaterialEarned")
 local registerEvent        = remotes:WaitForChild("RegisterCollectible")
 
--- ── Server-side metal inventory ───────────────────────────────────────────────
--- Needed so ProximityPrompt rebuild can verify and deduct without trusting client.
+-- ── Server-side material cache ────────────────────────────────────────────────
+-- Tracks materials collected so the rebuild ProximityPrompt can verify/deduct
+-- without trusting the client.
 
-local playerMetals = {}   -- [player] = { Iron=0, Copper=0, ... }
-local drones       = {}   -- populated below after DRONE_CONFIGS is defined
+local playerMaterials = {}   -- [player] = { Iron=0, Carbon=0, ... }
+local drones          = {}   -- populated below after DRONE_CONFIGS is defined
 
-local function addMetal(player, name)
-    if not playerMetals[player] then playerMetals[player] = {} end
-    playerMetals[player][name] = (playerMetals[player][name] or 0) + 1
+local function addMaterial(player, name, qty)
+    if not playerMaterials[player] then playerMaterials[player] = {} end
+    playerMaterials[player][name] = (playerMaterials[player][name] or 0) + (qty or 1)
 end
 
--- Returns the metal name deducted, or nil if none available
-local function takeMetal(player)
-    local inv = playerMetals[player]
+-- Returns the material name deducted, or nil if none available
+local function takeMaterial(player)
+    local inv = playerMaterials[player]
     if not inv then return nil end
     for name, count in pairs(inv) do
         if count > 0 then
@@ -44,12 +44,13 @@ local function takeMetal(player)
     return nil
 end
 
-serverMetalEarned.Event:Connect(function(player, metalName)
-    addMetal(player, metalName)
+-- Keep cache in sync when materials are collected (DebrisSystem fires this)
+materialEarned.Event:Connect(function(player, matName, qty)
+    addMaterial(player, matName, qty)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-    playerMetals[player] = nil
+    playerMaterials[player] = nil
 end)
 
 Players.PlayerAdded:Connect(function(player)
@@ -76,32 +77,26 @@ end)
 
 -- ── Flat world hover ─────────────────────────────────────────────────────────
 
-local HOVER_HEIGHT = 12   -- studs above the ground surface
+local HOVER_HEIGHT = Config.ROVER_HOVER_HEIGHT   -- studs above ground
 
-local function moonHoverPos(worldPos)
-    local pc    = Config.PLANET_CENTER
-    local r     = Config.PLANET_RADIUS
-    local dx    = worldPos.X - pc.X
-    local dz    = worldPos.Z - pc.Z
-    local inner = r * r - dx * dx - dz * dz
-    local surfY = pc.Y + (inner > 0 and math.sqrt(inner) or 0)
-    return Vector3.new(worldPos.X, surfY + HOVER_HEIGHT, worldPos.Z)
+local function flatHoverPos(worldPos)
+    return Vector3.new(worldPos.X, Config.MAP_GROUND_Y + HOVER_HEIGHT, worldPos.Z)
 end
 
 -- ── Constants ─────────────────────────────────────────────────────────────────
 
 local CARGO_COLOR      = Color3.fromRGB(255, 255, 255)
-local CARGO_CAPACITY   = 50   -- items per trip before returning to base
-local ROVER_SPEED      = 60
-local GUN_RANGE        = 160
-local GUN_COOLDOWN     = 3
-local GUN_DAMAGE       = 15
-local GUARD_RADIUS     = 10   -- ring radius around player in the surface-tangent plane
-local GUARD_HEIGHT     = 18   -- studs above player in the outward radial direction
-local DRONE_MAX_HEALTH = 100
-local DEBRIS_DAMAGE    = 25   -- damage per debris chunk that touches a drone
-local REPAIR_THRESHOLD = 40   -- HP — return to station below this
-local REPAIR_RATE      = 8    -- HP per second while docked
+local CARGO_CAPACITY   = Config.DRONE_CARGO_CAPACITY
+local ROVER_SPEED      = Config.DRONE_SPEED
+local GUN_RANGE        = Config.DRONE_GUN_RANGE
+local GUN_COOLDOWN     = Config.DRONE_GUN_COOLDOWN
+local GUN_DAMAGE       = Config.DRONE_GUN_DAMAGE
+local GUARD_RADIUS     = Config.DRONE_GUARD_RADIUS
+local GUARD_HEIGHT     = Config.DRONE_GUARD_HEIGHT
+local DRONE_MAX_HEALTH = Config.DRONE_MAX_HEALTH
+local DEBRIS_DAMAGE    = Config.DRONE_DEBRIS_DAMAGE
+local REPAIR_THRESHOLD = Config.DRONE_REPAIR_THRESHOLD
+local REPAIR_RATE      = Config.DRONE_REPAIR_RATE
 local REPAIR_COLOR     = Color3.fromRGB(255, 160, 20)  -- orange = repairing
 
 local MODE_COLOR = {
@@ -334,10 +329,10 @@ local function createRebuildMarker(drone)
     prompt.Parent                = marker
 
     prompt.Triggered:Connect(function(player)
-        local metalName = takeMetal(player)
-        if not metalName then return end  -- no metal, do nothing
-        -- Tell client to remove one metal from their UI
-        deductMetalEvent:FireClient(player, metalName)
+        local matName = takeMaterial(player)
+        if not matName then return end  -- no materials, do nothing
+        -- Tell client to deduct one material from their HUD
+        spendMaterialEvent:FireClient(player, matName, 1)
         marker:Destroy()
         drone.rebuildMarker = nil
         -- Rebuild
@@ -470,17 +465,10 @@ local function deliverCargo(drone)
     local binDeltas = {}
 
     for _, item in ipairs(drone.bags) do
-        if item.type == "Fragment" then
-            for _, player in ipairs(playerList) do
-                collectFragmentEvent:FireClient(player, item.name)
-                if _G.PlayerData then _G.PlayerData.addFragment(player, item.name) end
-            end
-        elseif item.type == "Metal" then
-            for _, player in ipairs(playerList) do
-                collectMetalEvent:FireClient(player, item.name)
-                addMetal(player, item.name)  -- local cache for rebuild system
-                if _G.PlayerData then _G.PlayerData.addMetal(player, item.name) end
-            end
+        for _, player in ipairs(playerList) do
+            collectFragmentEvent:FireClient(player, item.name, 1, nil)
+            addMaterial(player, item.name, 1)
+            if _G.PlayerData and _G.PlayerData.addMaterial then _G.PlayerData.addMaterial(player, item.name, 1) end
         end
         binDeltas[item.name] = (binDeltas[item.name] or 0) + 1
     end
@@ -602,15 +590,12 @@ RunService.Heartbeat:Connect(function(dt)
             local p = drone.assignedPlayer
             if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 local playerPos = p.Character.HumanoidRootPart.Position
-                -- Ring above the player in the plane perpendicular to the surface normal
-                local up  = (playerPos - Config.PLANET_CENTER).Unit
-                local ref = math.abs(up.Y) < 0.9 and Vector3.new(0, 1, 0) or Vector3.new(1, 0, 0)
-                local tanA = up:Cross(ref).Unit
-                local tanB = up:Cross(tanA).Unit
-                local guardPos = playerPos
-                    + up    * GUARD_HEIGHT
-                    + tanA  * math.cos(drone.guardAngle) * GUARD_RADIUS
-                    + tanB  * math.sin(drone.guardAngle) * GUARD_RADIUS
+                -- Flat map: up is always world Y; orbit ring in the XZ plane above the player
+                local guardPos = Vector3.new(
+                    playerPos.X + math.cos(drone.guardAngle) * GUARD_RADIUS,
+                    playerPos.Y + GUARD_HEIGHT,
+                    playerPos.Z + math.sin(drone.guardAngle) * GUARD_RADIUS
+                )
                 moveDrone(drone, guardPos, dt)
             else
                 moveDrone(drone, drone.homePos, dt)
@@ -652,7 +637,7 @@ RunService.Heartbeat:Connect(function(dt)
                         drone.target.claimed = false
                         drone.target = nil; drone.state = "idle"
                     else
-                        local arrived = moveDrone(drone, moonHoverPos(drone.target.part.Position), dt)
+                        local arrived = moveDrone(drone, flatHoverPos(drone.target.part.Position), dt)
                         if arrived then drone.state = "collecting" end
                     end
                 end

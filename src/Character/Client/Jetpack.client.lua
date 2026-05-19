@@ -9,18 +9,18 @@ local UserInputService  = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config            = require(ReplicatedStorage:WaitForChild("Config"))
 
-local PLANET_CENTER = Config.PLANET_CENTER
-
 local character = script.Parent
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 local torso     = character:WaitForChild("UpperTorso")
 
-local THRUST          = 520    -- must exceed workspace.Gravity (196) to climb; 520 = strong lift
-local MAX_UP_SPEED    = 140   -- terminal ascent speed (studs/s)
-local JETPACK_DELAY   = 0.3   -- seconds of held Space before jetpack fires (on ground)
-local FORWARD_THRUST  = 580   -- horizontal boost while airborne and moving
-local MAX_HORIZ_SPEED = 120   -- max horizontal speed from jetpack (studs/s)
+local JETPACK_DELAY   = Config.JETPACK_ACTIVATION_DELAY
+
+-- Helper: read from _G.LiveConfig if the admin panel has set a live override,
+-- otherwise fall back to the baked Config value.
+local function live(key) return (_G.LiveConfig and _G.LiveConfig[key]) or Config[key] end
+
+local UP = Vector3.new(0, 1, 0)
 
 -- ── Jetpack model ─────────────────────────────────────────────────────────────
 
@@ -164,11 +164,12 @@ RunService.Heartbeat:Connect(function(dt)
         local shouldThrust = (not onGround) or (spaceHeld >= JETPACK_DELAY)
 
         if shouldThrust then
-            local upDir   = (hrp.Position - PLANET_CENTER).Unit
+            local upDir   = UP
             local vel     = hrp.AssemblyLinearVelocity
             local upSpeed = vel:Dot(upDir)
-            if upSpeed < MAX_UP_SPEED then
-                local boost = math.min(THRUST * dt, MAX_UP_SPEED - upSpeed)
+            local maxUp   = live("JETPACK_MAX_UP_SPEED")
+            if upSpeed < maxUp then
+                local boost = math.min(live("JETPACK_THRUST") * dt, maxUp - upSpeed)
                 hrp.AssemblyLinearVelocity = vel + upDir * boost
             end
 
@@ -176,12 +177,12 @@ RunService.Heartbeat:Connect(function(dt)
             local moveDir = humanoid.MoveDirection
             local inAir   = humanoid.FloorMaterial == Enum.Material.Air
             if inAir and moveDir.Magnitude > 0.1 then
-                -- Project move direction onto the horizontal plane (remove up component)
-                local horizDir = (moveDir - upDir * moveDir:Dot(upDir)).Unit
-                local horizVel = vel - upDir * vel:Dot(upDir)
+                local horizDir   = (moveDir - upDir * moveDir:Dot(upDir)).Unit
+                local horizVel   = vel - upDir * vel:Dot(upDir)
                 local horizSpeed = horizVel:Dot(horizDir)
-                if horizSpeed < MAX_HORIZ_SPEED then
-                    local fwdBoost = math.min(FORWARD_THRUST * dt, MAX_HORIZ_SPEED - horizSpeed)
+                local maxHoriz   = live("JETPACK_MAX_HORIZ_SPEED")
+                if horizSpeed < maxHoriz then
+                    local fwdBoost = math.min(live("JETPACK_FORWARD_THRUST") * dt, maxHoriz - horizSpeed)
                     hrp.AssemblyLinearVelocity = hrp.AssemblyLinearVelocity + horizDir * fwdBoost
                 end
             end

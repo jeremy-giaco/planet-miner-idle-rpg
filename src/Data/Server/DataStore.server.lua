@@ -91,27 +91,21 @@ _G.PlayerData = {
         saveData(player)
     end,
 
-    -- Add fragments to a player's inventory
-    addFragment = function(player, fragType, qty)
+    -- Add material (unified — replaces addFragment / addMetal)
+    addMaterial = function(player, matName, qty)
         local data = cache[player]
         if not data then return end
-        data.fragments[fragType] = (data.fragments[fragType] or 0) + (qty or 1)
+        data.materials[matName] = (data.materials[matName] or 0) + (qty or 1)
     end,
 
-    -- Add metal
-    addMetal = function(player, metalName)
-        local data = cache[player]
-        if not data then return end
-        data.metals[metalName] = (data.metals[metalName] or 0) + 1
-    end,
-
-    -- Deduct metal, returns true if successful
-    deductMetal = function(player, metalName)
+    -- Deduct material, returns true if successful
+    deductMaterial = function(player, matName, qty)
         local data = cache[player]
         if not data then return false end
-        local count = data.metals[metalName] or 0
-        if count <= 0 then return false end
-        data.metals[metalName] = count - 1
+        local count = data.materials[matName] or 0
+        local amount = qty or 1
+        if count < amount then return false end
+        data.materials[matName] = count - amount
         return true
     end,
 

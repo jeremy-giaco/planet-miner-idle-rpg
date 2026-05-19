@@ -21,7 +21,7 @@ Players.PlayerAdded:Connect(function(player)
     local data = _G.PlayerData and _G.PlayerData.get(player)
     if data then
         if data.settings  then loadSettings:FireClient(player, data.settings) end
-        loadInventory:FireClient(player, data.fragments or {}, data.metals or {})
+        loadInventory:FireClient(player, data.materials or {})
     end
 end)
 

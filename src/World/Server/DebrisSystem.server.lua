@@ -1,28 +1,30 @@
--- Script → place in ServerScriptService, rename to "DebrisSystem"
+-- Script → ServerScriptService/DebrisSystem
+-- Flat-map debris: chunks fall from above under workspace gravity,
+-- snap to the ground plane, then shatter into collectible materials.
 if not game:GetService("RunService"):IsServer() then return end
+
 local Workspace         = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
 local TweenService      = game:GetService("TweenService")
 local RunService        = game:GetService("RunService")
 local PhysicsService    = game:GetService("PhysicsService")
+
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 
--- Debris chunks collide with the planet but not with each other
+-- Debris chunks don't collide with each other, only with the world
 pcall(function()
     PhysicsService:RegisterCollisionGroup("Debris")
     PhysicsService:CollisionGroupSetCollidable("Debris", "Debris", false)
 end)
 
-local PLANET_CENTER = Config.PLANET_CENTER
-local PLANET_RADIUS = Config.PLANET_RADIUS
+local GROUND_Y = Config.MAP_GROUND_Y   -- 0
 
--- ── Remotes (created by Core/Remotes.server.lua) ─────────────────────────────
+-- ── Remotes ───────────────────────────────────────────────────────────────────
 
 local remotes              = ReplicatedStorage:WaitForChild("Remotes")
 local hitDebrisEvent       = remotes:WaitForChild("HitDebris")
 local collectFragmentEvent = remotes:WaitForChild("CollectFragment")
-local collectMetalEvent    = remotes:WaitForChild("CollectMetal")
 local registerCollectible  = remotes:WaitForChild("RegisterCollectible")
 local serverHitDebris      = remotes:WaitForChild("ServerHitDebris")
 
@@ -32,8 +34,22 @@ local debrisFolder = Instance.new("Folder")
 debrisFolder.Name   = "Debris"
 debrisFolder.Parent = Workspace
 
+-- ── Material weight table ─────────────────────────────────────────────────────
+-- Built from Config.MATERIALS so debris drops the right stuff.
 
--- ── Lookup tables ────────────────────────────────────────────────────────────
+local _matTotal = 0
+for _, m in ipairs(Config.MATERIALS) do _matTotal += m.weight end
+
+local function pickMaterial()
+    local r, cum = math.random() * _matTotal, 0
+    for _, m in ipairs(Config.MATERIALS) do
+        cum += m.weight
+        if r <= cum then return m end
+    end
+    return Config.MATERIALS[1]
+end
+
+-- ── Debris visual lookup ──────────────────────────────────────────────────────
 
 local DEBRIS_COLORS = {
     Color3.fromRGB(180, 100,  35),
@@ -43,6 +59,7 @@ local DEBRIS_COLORS = {
     Color3.fromRGB( 50, 160, 110),
     Color3.fromRGB(190, 160,  40),
 }
+
 local DEBRIS_MATERIALS = {
     Enum.Material.Rock,
     Enum.Material.SmoothPlastic,
@@ -50,66 +67,30 @@ local DEBRIS_MATERIALS = {
     Enum.Material.Rock,
 }
 
--- Per-type collectible shape, colour, and material
-local COLLECTIBLE = {
-    Rock = {
-        shape    = Enum.PartType.Wedge,
-        size     = Vector3.new(2.0, 1.6, 1.4),
-        color    = Color3.fromRGB(118, 92, 62),
-        material = Enum.Material.Rock,
-        trans    = 0,
-    },
-    Metal = {
-        shape    = Enum.PartType.Block,
-        size     = Vector3.new(3.2, 0.6, 1.2),
-        color    = Color3.fromRGB(162, 168, 178),
-        material = Enum.Material.Metal,
-        trans    = 0,
-    },
-    Crystal = {
-        shape    = Enum.PartType.Wedge,
-        size     = Vector3.new(0.8, 3.2, 0.7),
-        color    = Color3.fromRGB(145, 75, 255),
-        material = Enum.Material.SmoothPlastic,
-        trans    = 0.1,
-    },
-    Ice = {
-        shape    = Enum.PartType.Block,
-        size     = Vector3.new(1.8, 1.8, 1.8),
-        color    = Color3.fromRGB(185, 225, 255),
-        material = Enum.Material.Glass,
-        trans    = 0.3,
-    },
+local CHUNK_SHAPES = {
+    { shape = Enum.PartType.Block,       weight = 30 },
+    { shape = Enum.PartType.Wedge,       weight = 25 },
+    { shape = Enum.PartType.CornerWedge, weight = 20 },
+    { shape = Enum.PartType.Cylinder,    weight = 15 },
+    { shape = Enum.PartType.Ball,        weight = 10 },
 }
+local _shapeTotal = 0
+for _, s in ipairs(CHUNK_SHAPES) do _shapeTotal += s.weight end
 
-local DEATH_PIECES   = 27
-local CARGO_CHANCE   = 0.10   -- fraction of pieces that become collectible cargo
-local COLLECT_RADIUS = 20     -- studs — proximity to auto-collect cargo
-
--- Weighted quantity table: {qty, weight}. Higher weight = more likely.
-local CARGO_QUANTITIES = {
-    { qty = 1,  weight = 55 },
-    { qty = 2,  weight = 28 },
-    { qty = 4,  weight = 12 },
-    { qty = 8,  weight = 4  },
-    { qty = 16, weight = 1  },
-}
-
-local function pickQty()
-    local total = 0
-    for _, e in ipairs(CARGO_QUANTITIES) do total += e.weight end
-    local r, cum = math.random() * total, 0
-    for _, e in ipairs(CARGO_QUANTITIES) do
-        cum += e.weight
-        if r <= cum then return e.qty end
+local function pickShape()
+    local r, cum = math.random() * _shapeTotal, 0
+    for _, s in ipairs(CHUNK_SHAPES) do
+        cum += s.weight
+        if r <= cum then return s.shape end
     end
-    return 1
+    return Enum.PartType.Block
 end
 
-local activeCollectibles = {}  -- array of {part, fragType, qty}
+local function pick(t) return t[math.random(1, #t)] end
 
--- ── Collectible spin + beacon ─────────────────────────────────────────────────
-local spinParts = {}  -- { part, beam, up, baseCF, angle }
+-- ── Collectible spin loop ─────────────────────────────────────────────────────
+
+local spinParts = {}  -- { part, beam, halo, anchor, baseCF, angle }
 
 RunService.Heartbeat:Connect(function(dt)
     for i = #spinParts, 1, -1 do
@@ -120,66 +101,66 @@ RunService.Heartbeat:Connect(function(dt)
             if s.anchor and s.anchor.Parent then s.anchor:Destroy() end
             table.remove(spinParts, i)
         else
-            s.angle = s.angle + dt * 1.4   -- ~1.4 rad/s rotation
+            s.angle = s.angle + dt * Config.COLLECTIBLE_ROTATION_SPEED
             s.part.CFrame = s.baseCF * CFrame.Angles(0, s.angle, 0)
         end
     end
 end)
 
-local function pick(t) return t[math.random(1, #t)] end
-
-
 -- ── Collectible spawner ───────────────────────────────────────────────────────
 
-local function spawnCollectible(position, fragType)
-    local cfg   = COLLECTIBLE[fragType] or COLLECTIBLE.Rock
+local activeCollectibles = {}  -- { part, matName, qty }
+
+local function spawnCollectible(position, mat)
+    -- mat is a Config.MATERIALS entry {name, color, rarity, element, ...}
+    local color = mat.color
+
+    -- Collectible shape: use material rarity to hint the visual
+    local shape = Enum.PartType.Block
+    local size  = Vector3.new(2.4, 0.8, 1.4)
+    local trans = 0
+    if mat.rarity == "Rare" or mat.rarity == "Exotic" then
+        shape = Enum.PartType.Wedge
+        size  = Vector3.new(0.9, 3.0, 0.8)
+        trans = 0.1
+    elseif mat.rarity == "Uncommon" then
+        shape = Enum.PartType.Wedge
+        size  = Vector3.new(2.0, 1.6, 1.4)
+    end
     local scale = 0.75 + math.random() * 0.5
 
-    local part          = Instance.new("Part")
-    part.Name           = fragType
-    part.Shape          = cfg.shape
-    part.Size           = cfg.size * scale
-    part.Color          = cfg.color
-    part.Material       = cfg.material
-    part.Transparency   = cfg.trans
-    part.Anchored       = true
-    part.CanCollide     = false
-    part.CanQuery       = false
-    part.CastShadow     = false
+    -- Scatter in XZ around the death point, snap to ground plane
+    local scatter = Vector3.new(
+        position.X + math.random(-6, 6),
+        GROUND_Y,
+        position.Z + math.random(-6, 6)
+    )
 
-    -- Scatter in the tangent plane of the sphere at the death point, then
-    -- project back to the surface so collectibles sit ON the planet.
-    local radialDir = (position - PLANET_CENTER)
-    if radialDir.Magnitude < 0.1 then radialDir = Vector3.new(0, 1, 0) end
-    local surfNormal = radialDir.Unit
-    local ref        = math.abs(surfNormal.Y) < 0.9 and Vector3.new(0, 1, 0) or Vector3.new(1, 0, 0)
-    local tanA       = surfNormal:Cross(ref).Unit
-    local tanB       = surfNormal:Cross(tanA).Unit
-    local scattered  = position + tanA * math.random(-6, 6) + tanB * math.random(-6, 6)
-    local snapDir    = (scattered - PLANET_CENTER)
-    if snapDir.Magnitude < 0.1 then snapDir = surfNormal end
-    -- Place centre at the surface so the collectible sits flush
-    local surfPos    = PLANET_CENTER + snapDir.Unit * PLANET_RADIUS
+    local part        = Instance.new("Part")
+    part.Name         = mat.name
+    part.Shape        = shape
+    part.Size         = size * scale
+    part.Color        = color
+    part.Material     = (mat.rarity == "Exotic") and Enum.Material.Neon or Enum.Material.SmoothPlastic
+    part.Transparency = trans
+    part.Anchored     = true
+    part.CanCollide   = false
+    part.CanQuery     = false
+    part.CastShadow   = false
 
-    -- Orient upright relative to planet surface (UpVector = surfNormal)
-    -- Pick an arbitrary forward direction perpendicular to up
-    local up   = snapDir.Unit
-    local look = math.abs(up.Y) < 0.9 and Vector3.new(0,1,0) or Vector3.new(1,0,0)
-    look = (up:Cross(look)):Cross(up).Unit
-    local baseCF = CFrame.lookAt(surfPos, surfPos + look, up)
-    part.CFrame  = baseCF
-    part.Parent  = debrisFolder
+    local baseCF  = CFrame.new(scatter)
+    part.CFrame   = baseCF
+    part.Parent   = debrisFolder
 
     part:SetAttribute("IsFragment",   true)
-    part:SetAttribute("FragmentType", fragType)
+    part:SetAttribute("MaterialName", mat.name)
 
-    -- ── Beacon spotlight (Beam cone widening toward sky) ─────────────────────
-    local BEACON_H = 90
+    -- ── Beacon ────────────────────────────────────────────────────────────────
+    local BEACON_H = Config.COLLECTIBLE_BEACON_HEIGHT
 
-    -- Invisible anchor Part at the top of the cone
-    local anchor     = Instance.new("Part")
+    local anchor      = Instance.new("Part")
     anchor.Size        = Vector3.new(0.1, 0.1, 0.1)
-    anchor.CFrame      = CFrame.new(surfPos + up * BEACON_H)
+    anchor.CFrame      = CFrame.new(scatter + Vector3.new(0, BEACON_H, 0))
     anchor.Anchored    = true
     anchor.CanCollide  = false
     anchor.CanQuery    = false
@@ -190,7 +171,6 @@ local function spawnCollectible(position, fragType)
     local att0 = Instance.new("Attachment"); att0.Parent = part
     local att1 = Instance.new("Attachment"); att1.Parent = anchor
 
-    -- Core beam: visible light shaft, narrow at base, spreading upward
     local beam = Instance.new("Beam")
     beam.Attachment0 = att0; beam.Attachment1 = att1
     beam.Width0 = 0.5;  beam.Width1 = 10
@@ -198,8 +178,8 @@ local function spawnCollectible(position, fragType)
     beam.FaceCamera = true; beam.Segments = 1
     beam.CurveSize0 = 0;  beam.CurveSize1 = 0
     beam.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0,   cfg.color),
-        ColorSequenceKeypoint.new(0.6, cfg.color),
+        ColorSequenceKeypoint.new(0,   color),
+        ColorSequenceKeypoint.new(0.6, color),
         ColorSequenceKeypoint.new(1,   Color3.new(1, 1, 1)),
     })
     beam.Transparency = NumberSequence.new({
@@ -207,41 +187,38 @@ local function spawnCollectible(position, fragType)
         NumberSequenceKeypoint.new(0.5, 0.55),
         NumberSequenceKeypoint.new(1,   1),
     })
-    beam.Parent = workspace
+    beam.Parent = Workspace
 
-    -- Halo beam: much wider, very soft — gives the "fog" spread
     local halo = Instance.new("Beam")
     halo.Attachment0 = att0; halo.Attachment1 = att1
     halo.Width0 = 3;  halo.Width1 = 28
     halo.LightEmission = 1; halo.LightInfluence = 0
     halo.FaceCamera = true; halo.Segments = 1
     halo.CurveSize0 = 0;  halo.CurveSize1 = 0
-    halo.Color = ColorSequence.new(cfg.color)
+    halo.Color = ColorSequence.new(color)
     halo.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0,   0.65),
+        NumberSequenceKeypoint.new(0,    0.65),
         NumberSequenceKeypoint.new(0.35, 0.82),
-        NumberSequenceKeypoint.new(1,   1),
+        NumberSequenceKeypoint.new(1,    1),
     })
-    halo.Parent = workspace
+    halo.Parent = Workspace
 
-    -- Particle attachment on the collectible
+    -- Particles
     local pAtt = Instance.new("Attachment"); pAtt.Parent = part
 
-    -- Fast rising sparkles — bright, tight, travel the full column
     local sparkles = Instance.new("ParticleEmitter")
     sparkles.Texture        = "rbxasset://textures/particles/sparkles_main.dds"
     sparkles.Color          = ColorSequence.new({
         ColorSequenceKeypoint.new(0,   Color3.new(1, 1, 1)),
-        ColorSequenceKeypoint.new(0.3, cfg.color),
+        ColorSequenceKeypoint.new(0.3, color),
         ColorSequenceKeypoint.new(1,   Color3.new(1, 1, 1)),
     })
-    sparkles.LightEmission  = 1
-    sparkles.LightInfluence = 0
+    sparkles.LightEmission  = 1; sparkles.LightInfluence = 0
     sparkles.Size           = NumberSequence.new({
-        NumberSequenceKeypoint.new(0,   0),
+        NumberSequenceKeypoint.new(0,    0),
         NumberSequenceKeypoint.new(0.12, 0.6),
         NumberSequenceKeypoint.new(0.8,  0.3),
-        NumberSequenceKeypoint.new(1,   0),
+        NumberSequenceKeypoint.new(1,    0),
     })
     sparkles.Transparency   = NumberSequence.new({
         NumberSequenceKeypoint.new(0,   0),
@@ -252,25 +229,21 @@ local function spawnCollectible(position, fragType)
     sparkles.Lifetime       = NumberRange.new(2, 4.5)
     sparkles.Rate           = 60
     sparkles.SpreadAngle    = Vector2.new(5, 5)
-    sparkles.Rotation       = NumberRange.new(0, 360)
-    sparkles.RotSpeed       = NumberRange.new(-120, 120)
     sparkles.EmissionDirection = Enum.NormalId.Top
     sparkles.Parent         = pAtt
 
-    -- Slow smoke wisps — large, soft, organic fog drifting up
     local wisps = Instance.new("ParticleEmitter")
     wisps.Texture        = "rbxasset://textures/particles/smoke_main.dds"
     wisps.Color          = ColorSequence.new({
-        ColorSequenceKeypoint.new(0,   cfg.color),
+        ColorSequenceKeypoint.new(0,   color),
         ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
-        ColorSequenceKeypoint.new(1,   cfg.color),
+        ColorSequenceKeypoint.new(1,   color),
     })
-    wisps.LightEmission  = 0.9
-    wisps.LightInfluence = 0.1
+    wisps.LightEmission  = 0.9; wisps.LightInfluence = 0.1
     wisps.Size           = NumberSequence.new({
-        NumberSequenceKeypoint.new(0,   0),
+        NumberSequenceKeypoint.new(0,    0),
         NumberSequenceKeypoint.new(0.25, 1.8),
-        NumberSequenceKeypoint.new(1,   0),
+        NumberSequenceKeypoint.new(1,    0),
     })
     wisps.Transparency   = NumberSequence.new({
         NumberSequenceKeypoint.new(0,   0.3),
@@ -281,57 +254,59 @@ local function spawnCollectible(position, fragType)
     wisps.Lifetime       = NumberRange.new(5, 10)
     wisps.Rate           = 14
     wisps.SpreadAngle    = Vector2.new(12, 12)
-    wisps.Rotation       = NumberRange.new(0, 360)
-    wisps.RotSpeed       = NumberRange.new(-25, 25)
     wisps.EmissionDirection = Enum.NormalId.Top
     wisps.Parent         = pAtt
 
-    -- SpotLight: casts colored light on terrain around the collectible
     local spot = Instance.new("SpotLight")
-    spot.Face       = Enum.NormalId.Top
-    spot.Color      = cfg.color
-    spot.Brightness = 4
-    spot.Range      = 70
-    spot.Angle      = 44
-    spot.Parent     = part
+    spot.Face = Enum.NormalId.Top; spot.Color = color
+    spot.Brightness = 4; spot.Range = 70; spot.Angle = 44
+    spot.Parent = part
 
-    -- Close saturated glow
     local glow = Instance.new("PointLight")
-    glow.Color      = cfg.color
-    glow.Brightness = 4
-    glow.Range      = 22
-    glow.Parent     = part
+    glow.Color = color; glow.Brightness = 4; glow.Range = 22
+    glow.Parent = part
 
-    -- Wide faint aura — visible from a distance
     local aura = Instance.new("PointLight")
-    aura.Color      = cfg.color
-    aura.Brightness = 1
-    aura.Range      = 50
-    aura.Parent     = part
+    aura.Color = color; aura.Brightness = 1; aura.Range = 50
+    aura.Parent = part
 
-    -- Register for spin loop (anchor + halo tracked for cleanup)
-    table.insert(spinParts, { part = part, beam = beam, halo = halo, anchor = anchor, up = up, baseCF = baseCF, angle = math.random() * math.pi * 2 })
+    table.insert(spinParts, {
+        part = part, beam = beam, halo = halo, anchor = anchor,
+        baseCF = baseCF, angle = math.random() * math.pi * 2
+    })
 
-    -- Roll quantity and track for proximity collection
-    local qty   = pickQty()
-    local entry = {part = part, fragType = fragType, qty = qty}
+    -- Weighted quantity
+    local CARGO_QUANTITIES = {
+        { qty = 1,  weight = 55 }, { qty = 2,  weight = 28 },
+        { qty = 4,  weight = 12 }, { qty = 8,  weight = 4  },
+        { qty = 16, weight = 1  },
+    }
+    local qTotal, qCum = 0, 0
+    for _, e in ipairs(CARGO_QUANTITIES) do qTotal += e.weight end
+    local qr = math.random() * qTotal
+    local qty = 1
+    for _, e in ipairs(CARGO_QUANTITIES) do
+        qCum += e.weight
+        if qr <= qCum then qty = e.qty; break end
+    end
+
+    local entry = { part = part, matName = mat.name, qty = qty }
     table.insert(activeCollectibles, entry)
+    registerCollectible:Fire(part, "Fragment", mat.name)
 
-    registerCollectible:Fire(part, "Fragment", fragType)
-
-    -- Flash on spawn
+    -- Spawn flash
     part.Transparency = 1
     local spawnLight = Instance.new("PointLight")
-    spawnLight.Color = cfg.color; spawnLight.Brightness = 8; spawnLight.Range = 30
+    spawnLight.Color = color; spawnLight.Brightness = 8; spawnLight.Range = 30
     spawnLight.Parent = part
-    TweenService:Create(part,       TweenInfo.new(0.15), {Transparency = cfg.trans}):Play()
+    TweenService:Create(part,       TweenInfo.new(0.15), {Transparency = trans}):Play()
     TweenService:Create(spawnLight, TweenInfo.new(0.5),  {Brightness = 0}):Play()
     task.delay(0.5, function()
         if spawnLight and spawnLight.Parent then spawnLight:Destroy() end
     end)
 
-    task.delay(60, function()
-        -- Remove from proximity table
+    -- Auto-despawn
+    task.delay(Config.COLLECTIBLE_LIFETIME, function()
         for i, e in ipairs(activeCollectibles) do
             if e.part == part then table.remove(activeCollectibles, i); break end
         end
@@ -346,79 +321,89 @@ local function spawnCollectible(position, fragType)
     end)
 end
 
--- ── Visual-only shard (no cargo value) ───────────────────────────────────────
+-- ── Visual-only shard ─────────────────────────────────────────────────────────
 
 local function spawnShard(center)
     local sz     = 0.4 + math.random() * 1.2
-    local offset = Vector3.new(math.random(-3,3), math.random(-3,3), math.random(-3,3))
-    local part = Instance.new("Part")
-    part.Name       = "Shard"
-    part.Size       = Vector3.new(sz, sz, sz)
-    part.CFrame     = CFrame.new(center + offset)
-                    * CFrame.Angles(
-                          math.random() * math.pi * 2,
-                          math.random() * math.pi * 2,
-                          math.random() * math.pi * 2)
-    part.Color      = pick(DEBRIS_COLORS)
-    part.Material   = Enum.Material.Rock
-    part.Anchored   = false
-    part.CanCollide = false
-    part.CanQuery   = false
-    part.CastShadow = false
-    part.Parent     = debrisFolder
+    local offset = Vector3.new(math.random(-3, 3), math.random(0, 4), math.random(-3, 3))
+    local p = Instance.new("Part")
+    p.Name       = "Shard"
+    p.Size       = Vector3.new(sz, sz, sz)
+    p.CFrame     = CFrame.new(center + offset)
+                 * CFrame.Angles(
+                       math.random() * math.pi * 2,
+                       math.random() * math.pi * 2,
+                       math.random() * math.pi * 2)
+    p.Color      = pick(DEBRIS_COLORS)
+    p.Material   = Enum.Material.Rock
+    p.Anchored   = false
+    p.CanCollide = false
+    p.CanQuery   = false
+    p.CastShadow = false
+    p.Parent     = debrisFolder
 
     local outDir = offset.Magnitude > 0.1 and offset.Unit
-        or Vector3.new(math.random()-0.5, math.random()-0.5, math.random()-0.5).Unit
+        or Vector3.new(math.random()-0.5, math.random()*0.5+0.5, math.random()-0.5).Unit
     local speed = 25 + math.random() * 55
-    part:ApplyImpulse(outDir * speed * part:GetMass())
+    p:ApplyImpulse(outDir * speed * p:GetMass())
 
-    TweenService:Create(part, TweenInfo.new(1, Enum.EasingStyle.Linear), {Transparency = 1}):Play()
+    TweenService:Create(p, TweenInfo.new(1, Enum.EasingStyle.Linear), {Transparency = 1}):Play()
     task.delay(1, function()
-        if part and part.Parent then part:Destroy() end
+        if p and p.Parent then p:Destroy() end
     end)
 end
 
--- ── Chunk builder ────────────────────────────────────────────────────────────
+-- ── Impact dust ring ──────────────────────────────────────────────────────────
 
--- Weighted shape table: mostly jagged rocks, occasional round/cylindrical
-local CHUNK_SHAPES = {
-    { shape = Enum.PartType.Block,       weight = 30 },  -- rectangular slab
-    { shape = Enum.PartType.Wedge,       weight = 25 },  -- angular shard
-    { shape = Enum.PartType.CornerWedge, weight = 20 },  -- corner chip
-    { shape = Enum.PartType.Cylinder,    weight = 15 },  -- columnar rock
-    { shape = Enum.PartType.Ball,        weight = 10 },  -- rounded boulder
-}
-local _shapeTotal = 0
-for _, s in ipairs(CHUNK_SHAPES) do _shapeTotal += s.weight end
-
-local function pickShape()
-    local r, cum = math.random() * _shapeTotal, 0
-    for _, s in ipairs(CHUNK_SHAPES) do
-        cum += s.weight
-        if r <= cum then return s.shape end
+local function spawnImpactDust(pos, chunkColor, chunkSize)
+    for i = 1, 8 do
+        local a   = (i / 8) * math.pi * 2
+        local dir = Vector3.new(math.cos(a), 0.3, math.sin(a)).Unit
+        local rock = Instance.new("Part")
+        rock.Size       = Vector3.new(0.5, 0.5, 0.5)
+        rock.CFrame     = CFrame.new(pos)
+        rock.Color      = chunkColor
+        rock.Material   = Enum.Material.Rock
+        rock.Anchored   = false
+        rock.CanCollide = false
+        rock.CanQuery   = false
+        rock.CastShadow = false
+        rock.Parent     = debrisFolder
+        rock:ApplyImpulse(dir * (18 + math.random() * 14) * rock:GetMass())
+        TweenService:Create(rock, TweenInfo.new(0.7, Enum.EasingStyle.Quad), {Transparency = 1}):Play()
+        task.delay(0.7, function() if rock and rock.Parent then rock:Destroy() end end)
     end
-    return Enum.PartType.Block
+
+    local flash = Instance.new("Part")
+    flash.Size        = Vector3.new(0.1, 0.1, 0.1)
+    flash.CFrame      = CFrame.new(pos)
+    flash.Anchored    = true
+    flash.CanCollide  = false
+    flash.Transparency = 1
+    flash.Parent      = debrisFolder
+    local light = Instance.new("PointLight")
+    light.Color = Color3.fromRGB(255, 180, 80); light.Brightness = 12; light.Range = chunkSize * 4
+    light.Parent = flash
+    TweenService:Create(light, TweenInfo.new(0.4), {Brightness = 0}):Play()
+    task.delay(0.4, function() if flash and flash.Parent then flash:Destroy() end end)
 end
 
-local function makeChunk(pos, size, color, health, fragType)
+-- ── Chunk builder ─────────────────────────────────────────────────────────────
+
+local function makeChunk(pos, size, color, health, mat)
     local chunk = Instance.new("Part")
     chunk.Name     = "DebrisChunk"
     chunk.Shape    = pickShape()
-
-    -- Irregular dimensions: stretch or squash each axis independently
-    -- so chunks look like broken rock rather than perfect cubes/spheres
-    local sx = size * (0.6 + math.random() * 0.9)
-    local sy = size * (0.5 + math.random() * 0.8)
-    local sz = size * (0.6 + math.random() * 0.9)
-    chunk.Size     = Vector3.new(sx, sy, sz)
-
-    -- Random tumble orientation so wedges/slabs land at different angles
+    chunk.Size     = Vector3.new(
+        size * (0.6 + math.random() * 0.9),
+        size * (0.5 + math.random() * 0.8),
+        size * (0.6 + math.random() * 0.9)
+    )
     chunk.CFrame   = CFrame.new(pos) * CFrame.Angles(
         math.random() * math.pi * 2,
         math.random() * math.pi * 2,
         math.random() * math.pi * 2
     )
-
     chunk.Color    = color
     chunk.Material = pick(DEBRIS_MATERIALS)
     chunk.CustomPhysicalProperties = PhysicalProperties.new(1, 2, 0, 1, 1)
@@ -426,62 +411,57 @@ local function makeChunk(pos, size, color, health, fragType)
     pcall(function() chunk.CollisionGroup = "Debris" end)
     chunk.Parent   = debrisFolder
 
-    chunk:SetAttribute("IsDebris",  true)
-    chunk:SetAttribute("Health",    health)
-    chunk:SetAttribute("FragType",  fragType)
+    chunk:SetAttribute("IsDebris",     true)
+    chunk:SetAttribute("Health",       health)
+    chunk:SetAttribute("MaterialName", mat.name)
 
     return chunk
 end
 
--- Debris spawn uses XZ radius capped to sphere footprint
-local SPAWN_RADIUS = PLANET_RADIUS * 0.85
+-- ── Debris spawner ────────────────────────────────────────────────────────────
 
--- ── Debris spawner ───────────────────────────────────────────────────────────
+local HALF_W = Config.MAP_WIDTH  / 2
+local HALF_D = Config.MAP_DEPTH  / 2
 
-local DEBRIS_GRAVITY  = 220  -- radial pull toward planet centre (studs/s²)
+local BASE_SAFE_RADIUS = 300  -- studs around origin — no debris spawns here
 
 local function spawnDebris()
-    -- Spawn above the playable area using the original flat Y ceiling
-    local angle   = math.random() * math.pi * 2
-    local spawnR  = math.random(0, SPAWN_RADIUS)
-    local spawnPos = Vector3.new(
-        math.cos(angle) * spawnR,
-        Config.DEBRIS_SPAWN_HEIGHT,
-        math.sin(angle) * spawnR
-    )
+    -- Random position within the map bounds, avoiding the base safe zone
+    local x, z
+    repeat
+        x = math.random(-HALF_W, HALF_W)
+        z = math.random(-HALF_D, HALF_D)
+    until math.sqrt(x*x + z*z) >= BASE_SAFE_RADIUS
 
-    local s        = math.random(13, 21)
-    local fragType = pick(Config.FRAGMENT_TYPES)
-    local color    = pick(DEBRIS_COLORS)
-    local chunk    = makeChunk(spawnPos, s, color, Config.DEBRIS_HEALTH, fragType)
+    local spawnPos = Vector3.new(x, Config.DEBRIS_SPAWN_HEIGHT, z)
 
-    -- Give a strong horizontal (tangential) velocity plus a downward push
-    -- so chunks streak across the sky at an angle rather than dropping straight down
-    local hAngle  = math.random() * math.pi * 2
-    local tanDir  = Vector3.new(math.cos(hAngle), 0, math.sin(hAngle))
-    local tanSpeed = 40 + math.random() * 40   -- 40–80 studs/s horizontal
-    local downSpeed = 30 + math.random() * 30  -- 30–60 studs/s downward
-    chunk:ApplyImpulse((tanDir * tanSpeed + Vector3.new(0, -downSpeed, 0)) * chunk:GetMass())
+    local s   = math.random(13, 21)
+    local mat = pickMaterial()
+    local chunk = makeChunk(spawnPos, s, mat.color, Config.DEBRIS_HEALTH, mat)
 
-    -- Guaranteed surface snap after 5 seconds regardless of physics
-    task.delay(5, function()
+    -- Horizontal drift toward the base + downward push, so chunks streak across the sky
+    local hAngle   = math.random() * math.pi * 2
+    local tanDir   = Vector3.new(math.cos(hAngle), 0, math.sin(hAngle))
+    local tanSpeed = 40 + math.random() * 40
+    local dnSpeed  = 30 + math.random() * 30
+    chunk:ApplyImpulse((tanDir * tanSpeed + Vector3.new(0, -dnSpeed, 0)) * chunk:GetMass())
+
+    -- Force-snap fallback after Config.DEBRIS_SURFACE_SNAP_DELAY seconds
+    task.delay(Config.DEBRIS_SURFACE_SNAP_DELAY, function()
         if not (chunk and chunk.Parent) or chunk.Anchored then return end
-        chunk.AssemblyLinearVelocity  = Vector3.new(0, 0, 0)
-        chunk.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-        local dir = (chunk.Position - PLANET_CENTER)
-        if dir.Magnitude > 0.1 then
-            chunk.CFrame = CFrame.new(PLANET_CENTER + dir.Unit * (PLANET_RADIUS - s * 0.15))
-                         * (chunk.CFrame - chunk.CFrame.Position)
-        end
+        chunk.AssemblyLinearVelocity  = Vector3.zero
+        chunk.AssemblyAngularVelocity = Vector3.zero
+        chunk.CFrame = CFrame.new(chunk.Position.X, GROUND_Y + chunk.Size.Y * 0.35, chunk.Position.Z)
+                     * (chunk.CFrame - chunk.CFrame.Position)
         chunk.Anchored = true
     end)
 
-    task.delay(120, function()
+    task.delay(Config.DEBRIS_LIFETIME, function()
         if chunk and chunk.Parent then chunk:Destroy() end
     end)
 end
 
--- ── Hit handling ─────────────────────────────────────────────────────────────
+-- ── Damage / death ────────────────────────────────────────────────────────────
 
 local function applyDamage(chunk, damage)
     if not chunk or not chunk.Parent then return end
@@ -490,18 +470,24 @@ local function applyDamage(chunk, damage)
     local hp   = (chunk:GetAttribute("Health") or 0) - damage
     local orig = chunk.Color
     chunk.Color = Color3.new(1, 1, 1)
-    task.delay(0.06, function()
+    task.delay(Config.DAMAGE_FLASH_DURATION, function()
         if chunk and chunk.Parent then chunk.Color = orig end
     end)
 
     if hp <= 0 then
-        local pos      = chunk.Position
-        local fragType = chunk:GetAttribute("FragType") or pick(Config.FRAGMENT_TYPES)
+        local pos     = chunk.Position
+        local matName = chunk:GetAttribute("MaterialName")
+        -- Look up the material entry by name (fallback to random)
+        local mat
+        for _, m in ipairs(Config.MATERIALS) do
+            if m.name == matName then mat = m; break end
+        end
+        mat = mat or pickMaterial()
         chunk:Destroy()
 
-        for _ = 1, DEATH_PIECES do
-            if math.random() < CARGO_CHANCE then
-                task.spawn(spawnCollectible, pos, fragType)
+        for _ = 1, Config.DEBRIS_DEATH_PIECES do
+            if math.random() < Config.DEBRIS_CARGO_CHANCE then
+                task.spawn(spawnCollectible, pos, mat)
             else
                 task.spawn(spawnShard, pos)
             end
@@ -511,142 +497,117 @@ local function applyDamage(chunk, damage)
     end
 end
 
--- Server-side dedup: ignore repeat events for the same chunk within 0.5s.
--- Handles cases where the client fires twice (stale script connections, network
--- batching, or both raycasts hitting the same target in one frame).
+-- ── Hit events ────────────────────────────────────────────────────────────────
+
 local recentlyHit = {}
 
--- Player laser (client → server)
 hitDebrisEvent.OnServerEvent:Connect(function(_player, chunk)
     if not chunk or not chunk.Parent then return end
     if not chunk:GetAttribute("IsDebris") then return end
     if recentlyHit[chunk] then return end
     recentlyHit[chunk] = true
-    task.delay(0.5, function() recentlyHit[chunk] = nil end)
+    task.delay(Config.DEBRIS_HIT_COOLDOWN, function() recentlyHit[chunk] = nil end)
     applyDamage(chunk, Config.LASER_DAMAGE)
 end)
 
--- Drone laser (server → server via BindableEvent)
 serverHitDebris.Event:Connect(function(chunk, damage)
     applyDamage(chunk, damage)
 end)
 
--- ── Proximity collection loop ────────────────────────────────────────────────
+-- ── Ground-snap Heartbeat ─────────────────────────────────────────────────────
+-- Workspace gravity pulls chunks down; we just detect landing and anchor.
+
+RunService.Heartbeat:Connect(function()
+    for _, chunk in ipairs(debrisFolder:GetChildren()) do
+        if chunk:IsA("BasePart") and not chunk.Anchored and chunk:GetAttribute("IsDebris") then
+            local halfH = chunk.Size.Y * 0.5
+            if chunk.Position.Y <= GROUND_Y + halfH then
+                chunk.AssemblyLinearVelocity  = Vector3.zero
+                chunk.AssemblyAngularVelocity = Vector3.zero
+                local snapY = GROUND_Y + halfH * 0.35   -- slightly embedded
+                chunk.CFrame = CFrame.new(chunk.Position.X, snapY, chunk.Position.Z)
+                             * (chunk.CFrame - chunk.CFrame.Position)
+                task.spawn(spawnImpactDust, chunk.Position, chunk.Color, chunk.Size.X)
+                chunk.Anchored = true
+            end
+        end
+    end
+end)
+
+-- ── Proximity + magnet collection ────────────────────────────────────────────
+
+local FRAG_MAGNET_SPEED   = 28    -- base studs/sec (reads Config.ORE_MAGNET_RADIUS / ORE_COLLECT_RADIUS live)
+
+local function collectFragment(entry, plr, i)
+    local p       = entry.part
+    local worldPos = p.Position
+    if entry.magnetConn then entry.magnetConn:Disconnect() end
+    table.remove(activeCollectibles, i)
+    p:Destroy()
+    if _G.PlayerData then
+        _G.PlayerData.addMaterial(plr, entry.matName, entry.qty)
+        _G.PlayerData.addXP(plr, entry.qty * 5)
+    end
+    collectFragmentEvent:FireClient(plr, entry.matName, entry.qty, worldPos)
+end
 
 task.spawn(function()
     while true do
-        task.wait(0.25)
-        local players = Players:GetPlayers()
+        task.wait(0.15)
         for i = #activeCollectibles, 1, -1 do
             local entry = activeCollectibles[i]
-            local part  = entry.part
-            if not (part and part.Parent) then
+            local p     = entry.part
+            if not (p and p.Parent) then
                 table.remove(activeCollectibles, i)
                 continue
             end
-            for _, plr in ipairs(players) do
+            for _, plr in ipairs(Players:GetPlayers()) do
                 local char = plr.Character
                 local hrp  = char and char:FindFirstChild("HumanoidRootPart")
-                if hrp and (hrp.Position - part.Position).Magnitude <= COLLECT_RADIUS then
-                    local worldPos = part.Position
-                    table.remove(activeCollectibles, i)
-                    part:Destroy()
-                    -- Persist to DataStore
-                    if _G.PlayerData then
-                        _G.PlayerData.addFragment(plr, entry.fragType, entry.qty)
-                        _G.PlayerData.addXP(plr, entry.qty * 5)
-                    end
-                    collectFragmentEvent:FireClient(plr, entry.fragType, entry.qty, worldPos)
+                if not hrp then continue end
+                local dist = (hrp.Position - p.Position).Magnitude
+                if dist <= Config.ORE_COLLECT_RADIUS then
+                    collectFragment(entry, plr, i)
                     break
+                elseif dist <= Config.ORE_MAGNET_RADIUS and not entry.magnetized then
+                    entry.magnetized = true
+                    -- Remove from spin table so it stops fighting the magnet movement
+                    for si = #spinParts, 1, -1 do
+                        if spinParts[si].part == p then
+                            table.remove(spinParts, si)
+                            break
+                        end
+                    end
+                    local targetPlr  = plr
+                    entry.magnetConn = RunService.Heartbeat:Connect(function(dt)
+                        if not (p and p.Parent) then return end
+                        local targetHrp = targetPlr.Character and targetPlr.Character:FindFirstChild("HumanoidRootPart")
+                        if not targetHrp then return end
+                        local toPlayer = targetHrp.Position - p.Position
+                        local d        = toPlayer.Magnitude
+                        local speed    = FRAG_MAGNET_SPEED * (1 + (Config.ORE_MAGNET_RADIUS - d) / Config.ORE_MAGNET_RADIUS * 3)
+                        local step     = math.min(d, speed * dt)
+                        p.CFrame       = CFrame.new(p.Position + toPlayer.Unit * step)
+                    end)
                 end
             end
         end
     end
 end)
 
--- ── Spawn loop ───────────────────────────────────────────────────────────────
+-- ── Spawn loop ────────────────────────────────────────────────────────────────
 
-local SPAWN_INTERVAL  = 1    -- seconds between waves
-local SPAWN_PER_WAVE  = 3
-local INITIAL_BURST   = 12
-
-for _ = 1, INITIAL_BURST do
+for _ = 1, Config.DEBRIS_INITIAL_BURST do
     task.spawn(spawnDebris)
 end
 
-
-local lastSpawn = tick()
-RunService.Heartbeat:Connect(function(dt)
-    for _, chunk in ipairs(debrisFolder:GetChildren()) do
-        if chunk:IsA("BasePart") and not chunk.Anchored and chunk:GetAttribute("IsDebris") then
-            -- Pull debris toward planet centre each frame
-            local toCenter = PLANET_CENTER - chunk.Position
-            local dist     = toCenter.Magnitude
-            if dist > 0.1 then
-                chunk:ApplyImpulse(toCenter.Unit * DEBRIS_GRAVITY * chunk:GetMass() * dt)
-            end
-
-            -- Anchor when chunk centre is within one half-size of the surface
-            if dist <= PLANET_RADIUS + chunk.Size.X * 0.5 then
-                chunk.AssemblyLinearVelocity  = Vector3.new(0, 0, 0)
-                chunk.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-                local snapDir = (chunk.Position - PLANET_CENTER)
-                if snapDir.Magnitude > 0.1 then
-                    -- 65% buried: centre is 0.15 * size below surface
-                    local snapPos = PLANET_CENTER + snapDir.Unit * (PLANET_RADIUS - chunk.Size.X * 0.15)
-                    chunk.CFrame = CFrame.new(snapPos) * (chunk.CFrame - chunk.CFrame.Position)
-                    task.spawn(function()
-                        local impactPos = PLANET_CENTER + snapDir.Unit * (PLANET_RADIUS + chunk.Size.X * 0.1)
-                        -- Dust ring: several small parts blasted outward in the tangent plane
-                        local ref = math.abs(snapDir.Unit.Y) < 0.9 and Vector3.new(0,1,0) or Vector3.new(1,0,0)
-                        local tanA = snapDir.Unit:Cross(ref).Unit
-                        local tanB = snapDir.Unit:Cross(tanA).Unit
-                        for i = 1, 8 do
-                            local a     = (i / 8) * math.pi * 2
-                            local dir2  = tanA * math.cos(a) + tanB * math.sin(a)
-                            local rock  = Instance.new("Part")
-                            rock.Size        = Vector3.new(0.5, 0.5, 0.5)
-                            rock.CFrame      = CFrame.new(impactPos)
-                            rock.Color       = chunk.Color
-                            rock.Material    = Enum.Material.Rock
-                            rock.Anchored    = false
-                            rock.CanCollide  = false
-                            rock.CanQuery    = false
-                            rock.CastShadow  = false
-                            rock.Parent      = debrisFolder
-                            rock:ApplyImpulse((dir2 * (18 + math.random()*14) + snapDir.Unit * (6 + math.random()*8)) * rock:GetMass())
-                            TweenService:Create(rock, TweenInfo.new(0.7, Enum.EasingStyle.Quad), {Transparency = 1}):Play()
-                            task.delay(0.7, function() if rock and rock.Parent then rock:Destroy() end end)
-                        end
-                        -- Flash light at impact point
-                        local flash = Instance.new("Part")
-                        flash.Size        = Vector3.new(0.1, 0.1, 0.1)
-                        flash.CFrame      = CFrame.new(impactPos)
-                        flash.Anchored    = true
-                        flash.CanCollide  = false
-                        flash.Transparency = 1
-                        flash.Parent      = debrisFolder
-                        local light = Instance.new("PointLight")
-                        light.Color      = Color3.fromRGB(255, 180, 80)
-                        light.Brightness = 12
-                        light.Range      = chunk.Size.X * 4
-                        light.Parent     = flash
-                        TweenService:Create(light, TweenInfo.new(0.4), {Brightness = 0}):Play()
-                        task.delay(0.4, function() if flash and flash.Parent then flash:Destroy() end end)
-                    end)
-                end
-                chunk.Anchored = true
-            end
-        end
-    end
-
-    local now = tick()
-    if now - lastSpawn >= SPAWN_INTERVAL then
-        lastSpawn = now
-        for _ = 1, SPAWN_PER_WAVE do
+task.spawn(function()
+    while true do
+        task.wait(Config.DEBRIS_SPAWN_INTERVAL)
+        for _ = 1, Config.DEBRIS_SPAWN_PER_WAVE do
             task.spawn(spawnDebris)
         end
     end
 end)
 
-print("[SkyBase] Debris system active")
+print("[GameSetup] Debris system active")

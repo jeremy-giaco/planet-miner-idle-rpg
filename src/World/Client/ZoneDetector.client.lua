@@ -72,12 +72,12 @@ end
 -- ── Zone lookup ───────────────────────────────────────────────────────────────
 
 local function getZoneName(xzDist)
-    for _, zone in ipairs(Config.ZONES) do
-        if xzDist <= zone.maxRadius then
-            return zone.name
+    for _, zone in ipairs(Config.AREAS) do
+        if xzDist <= zone.max_radius then
+            return zone.display_name
         end
     end
-    return Config.ZONES[#Config.ZONES].name  -- outermost if beyond all
+    return Config.AREAS[#Config.AREAS].display_name  -- outermost if beyond all
 end
 
 -- ── Atmosphere tween ──────────────────────────────────────────────────────────
@@ -123,7 +123,7 @@ RunService.Heartbeat:Connect(function(dt)
     local xzDist  = Vector2.new(p.X, p.Z).Magnitude
     local newZone = getZoneName(xzDist)
 
-    zoneLabel.Text       = (Config.PLANET_NAME or "Moon") .. ": " .. newZone
+    zoneLabel.Text       = "AREA: " .. newZone
     zoneLabel.TextColor3 = ZONE_LABEL_COLOR[newZone] or Color3.new(1, 1, 1)
 
     if newZone ~= currentZone then
