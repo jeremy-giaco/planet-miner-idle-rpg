@@ -29,9 +29,8 @@ remote("LoadSettings")        -- server → client: push saved settings on join
 remote("LoadInventory")       -- server → client: push saved cargo on join
 remote("SaveSettings")        -- client → server: persist a settings change
 remote("HitDebris")           -- client → server: laser hit a debris chunk
-remote("CollectFragment")     -- server → client: fragment added to inventory
-remote("CollectMetal")        -- server → client: metal added to inventory
-remote("DeductMetal")         -- server → client: metal spent
+remote("CollectFragment")     -- server → client: material collected (matName, qty, worldPos)
+remote("SpendMaterial")       -- server → client: material spent on rebuild (matName, qty)
 remote("DroneHealthUpdate")   -- server → client: drone health/mode changed
 remote("SetDroneMode")        -- client → server: player changed drone mode
 remote("ShipExited")          -- client → server: player exited ship (close hangar door)
@@ -39,4 +38,4 @@ remote("ShipExited")          -- client → server: player exited ship (close ha
 -- ── Server ↔ Server ───────────────────────────────────────────────────────────
 bindable("RegisterCollectible")  -- debris system registers a new collectible
 bindable("ServerHitDebris")      -- drone laser hits debris (server-side)
-bindable("ServerMetalEarned")    -- metal earned event for coin system
+bindable("MaterialEarned")       -- material earned event (for coin/economy system)

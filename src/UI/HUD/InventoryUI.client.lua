@@ -15,7 +15,8 @@ local camera    = workspace.CurrentCamera
 -- ── Remote ────────────────────────────────────────────────────────────────────
 
 local remotes              = ReplicatedStorage:WaitForChild("Remotes")
-local collectMaterialEvent = remotes:WaitForChild("CollectFragment")  -- server fires this
+local collectMaterialEvent = remotes:WaitForChild("CollectFragment")
+local spendMaterialEvent   = remotes:WaitForChild("SpendMaterial")
 
 -- ── Material lookup (built from Config) ──────────────────────────────────────
 -- matInfo[name] = { color, rarity, element }
@@ -365,6 +366,15 @@ collectMaterialEvent.OnClientEvent:Connect(function(matName, qty, worldPos)
 
     local label = (amount > 1) and ("+" .. amount .. " " .. matName) or ("+ " .. matName)
     showToast(label, rc, worldPos)
+end)
+
+spendMaterialEvent.OnClientEvent:Connect(function(matName, qty)
+    local amount = qty or 1
+    local current = inventory[matName] or 0
+    inventory[matName] = math.max(0, current - amount)
+    if inventory[matName] == 0 then inventory[matName] = nil end
+    rebuildSlots()
+    showToast("-" .. amount .. " " .. matName, Color3.fromRGB(220, 80, 80))
 end)
 
 -- ── Init ──────────────────────────────────────────────────────────────────────

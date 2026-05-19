@@ -11,10 +11,10 @@ local RunService        = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Config"))
 
-local remotes             = ReplicatedStorage:WaitForChild("Remotes")
-local registerCollectible = remotes:WaitForChild("RegisterCollectible")
-local serverMetalEarned   = remotes:WaitForChild("ServerMetalEarned")
-local collectMetalEvent   = remotes:WaitForChild("CollectMetal")
+local remotes              = ReplicatedStorage:WaitForChild("Remotes")
+local registerCollectible  = remotes:WaitForChild("RegisterCollectible")
+local materialEarned       = remotes:WaitForChild("MaterialEarned")
+local collectFragmentEvent = remotes:WaitForChild("CollectFragment")
 
 local oreFolder = Instance.new("Folder")
 oreFolder.Name   = "Ores"
@@ -25,16 +25,15 @@ local MAX_ORES       = 18
 
 -- ── Weighted random metal picker ──────────────────────────────────────────────
 
-local function pickMetal()
+local function pickMaterial()
     local total = 0
-    for _, m in ipairs(Config.METAL_TYPES) do total += m.weight end
-    local r = math.random() * total
-    local cum = 0
-    for _, m in ipairs(Config.METAL_TYPES) do
+    for _, m in ipairs(Config.MATERIALS) do total += m.weight end
+    local r, cum = math.random() * total, 0
+    for _, m in ipairs(Config.MATERIALS) do
         cum += m.weight
         if r <= cum then return m end
     end
-    return Config.METAL_TYPES[1]
+    return Config.MATERIALS[1]
 end
 
 -- ── Spawn one ore nugget on the flat world surface ───────────────────────────
@@ -52,7 +51,7 @@ end
 local function spawnOre()
     if #oreFolder:GetChildren() >= MAX_ORES then return end
 
-    local metal = pickMetal()
+    local metal = pickMaterial()
 
     -- Random flat-world position within compound/badlands
     local angle  = math.random() * math.pi * 2
@@ -101,11 +100,11 @@ local function spawnOre()
         conn:Disconnect()
         ore:Destroy()
         if _G.PlayerData then
-            _G.PlayerData.addMetal(player, metal.name)
+            _G.PlayerData.addMaterial(player, metal.name, 1)
             _G.PlayerData.addXP(player, 15)
         end
-        collectMetalEvent:FireClient(player, metal.name)
-        serverMetalEarned:Fire(player, metal.name)
+        collectFragmentEvent:FireClient(player, metal.name, 1, ore.Position)
+        materialEarned:Fire(player, metal.name, 1)
     end)
 
     -- Register with rover
