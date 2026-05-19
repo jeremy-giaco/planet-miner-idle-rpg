@@ -74,6 +74,7 @@ local SECTIONS = {
         { label = "Energy Max",      key = "SHIELD_ENERGY_MAX",    step = 10, desc = "Total shield energy capacity. More = shield lasts longer before depleting." },
         { label = "Drain / Hit",     key = "SHIELD_ENERGY_DRAIN",  step = 1,  desc = "Energy lost each time the shield destroys a debris chunk. Lower = longer lasting." },
         { label = "Recharge /s",     key = "SHIELD_RECHARGE_RATE", step = 5,  desc = "Energy restored per second while the shield tool is unequipped." },
+        { label = "Damage / Hit",    key = "SHIELD_DAMAGE",        step = 10, desc = "Damage dealt to a debris chunk each time the shield destroys it. Default laser does 50." },
     }},
     { title = "TACHYITE", rows = {
         { label = "Drop Chance",    key = "TACHYITE_DROP_CHANCE",  step = 0.01, desc = "Probability (0–1) that a blue speed orb drops on each debris death. 0.08 = 8% chance." },

@@ -118,6 +118,7 @@ local TUNABLES = {
     SHIELD_ENERGY_MAX       = { min = 10,   max = 1000, isServer = false },
     SHIELD_ENERGY_DRAIN     = { min = 0,    max = 100,  isServer = false },
     SHIELD_RECHARGE_RATE    = { min = 1,    max = 500,  isServer = false },
+    SHIELD_DAMAGE           = { min = 1,    max = 10000,isServer = false },
     -- Tachyite
     TACHYITE_DROP_CHANCE    = { min = 0,    max = 1,    isServer = false },
     TACHYITE_SPEED_BONUS    = { min = 0,    max = 200,  isServer = false },

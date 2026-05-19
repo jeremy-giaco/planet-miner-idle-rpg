@@ -507,13 +507,13 @@ end
 
 local recentlyHit = {}
 
-hitDebrisEvent.OnServerEvent:Connect(function(_player, chunk)
+hitDebrisEvent.OnServerEvent:Connect(function(_player, chunk, damage)
     if not chunk or not chunk.Parent then return end
     if not chunk:GetAttribute("IsDebris") then return end
     if recentlyHit[chunk] then return end
     recentlyHit[chunk] = true
     task.delay(Config.DEBRIS_HIT_COOLDOWN, function() recentlyHit[chunk] = nil end)
-    applyDamage(chunk, Config.LASER_DAMAGE)
+    applyDamage(chunk, damage or Config.LASER_DAMAGE)
 end)
 
 serverHitDebris.Event:Connect(function(chunk, damage)

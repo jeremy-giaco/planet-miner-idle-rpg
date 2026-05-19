@@ -8,8 +8,8 @@ return {
     -- ── World ─────────────────────────────────────────────────────────────────
 
     PLANET_NAME     = "Moon",
-    MAP_WIDTH       = 2400,         -- total flat map width (studs)
-    MAP_DEPTH       = 2400,         -- total flat map depth (studs)
+    MAP_WIDTH       = 5000,         -- total flat map width (studs)
+    MAP_DEPTH       = 5000,         -- total flat map depth (studs)
     MAP_GROUND_Y    = 0,            -- Y level of the ground plane
     BASE_POSITION   = Vector3.new(0, 0, 0),   -- center of the base (north/safe zone)
 
@@ -19,7 +19,7 @@ return {
 
     -- ── Lighting ─────────────────────────────────────────────────────────────
 
-    LIGHTING_CLOCK_TIME      = 6.083,   -- time of day (6:05 AM)
+    LIGHTING_CLOCK_TIME      = 7.083,   -- time of day (6:05 AM)
     LIGHTING_BRIGHTNESS      = 3.5,
     LIGHTING_DIFFUSE_SCALE   = 0.15,
     LIGHTING_SPECULAR_SCALE  = 0.8,
@@ -31,63 +31,64 @@ return {
 
     -- ── Player ────────────────────────────────────────────────────────────────
 
-    WALK_SPEED      = 10,           -- slow walk speed
-    RUN_SPEED       = 22,           -- run speed (toggle with R)
+    WALK_SPEED      = 15,           -- slow walk speed
+    RUN_SPEED       = 40,           -- run speed (toggle with R)
     JUMP_POWER      = 50,           -- default Roblox jump power
 
     -- ── Tachyite ──────────────────────────────────────────────────────────────
 
-    TACHYITE_DROP_CHANCE    = 0.08,     -- probability per debris death
+    TACHYITE_DROP_CHANCE    = 0.20,     -- probability per debris death
     TACHYITE_SPEED_BONUS    = 10,       -- run-speed added per stack
     TACHYITE_DURATION       = 180,      -- seconds before all stacks expire
 
     -- ── Jetpack ──────────────────────────────────────────────────────────────
 
-    JETPACK_THRUST              = 520,
-    JETPACK_MAX_UP_SPEED        = 140,
-    JETPACK_FORWARD_THRUST      = 580,
-    JETPACK_MAX_HORIZ_SPEED     = 120,
-    JETPACK_ACTIVATION_DELAY    = 0.3,
+    JETPACK_THRUST              = 200,
+    JETPACK_MAX_UP_SPEED        = 200,
+    JETPACK_FORWARD_THRUST      = 300,
+    JETPACK_MAX_HORIZ_SPEED     = 300,
+    JETPACK_ACTIVATION_DELAY    = 0.5,
 
     -- ── Shield ───────────────────────────────────────────────────────────────
 
-    SHIELD_RADIUS       = 8,     -- bubble radius in studs
-    SHIELD_ENERGY_MAX   = 100,   -- max energy capacity
-    SHIELD_ENERGY_DRAIN = 6,     -- energy lost per debris chunk destroyed
-    SHIELD_RECHARGE_RATE= 20,    -- energy per second while unequipped
+    SHIELD_RADIUS       = 5,     -- bubble radius in studs
+    SHIELD_ENERGY_MAX   = 500,   -- max energy capacity
+    SHIELD_ENERGY_DRAIN = 1,     -- energy lost per debris chunk destroyed
+    SHIELD_RECHARGE_RATE= 30,    -- energy per second while unequipped
+    SHIELD_DAMAGE       = 50,    -- damage dealt to debris per shield hit
 
     -- ── Weapons ──────────────────────────────────────────────────────────────
 
-    LASER_DAMAGE    = 100,
+    LASER_DAMAGE    = 50,
     LASER_RANGE     = 8000,
-    LASER_COOLDOWN  = 0.25,
+    LASER_COOLDOWN  = 0.1,
     LASER_COLOR     = Color3.fromRGB(255, 30, 30),
 
     -- ── Debris ───────────────────────────────────────────────────────────────
 
-    DEBRIS_SPAWN_INTERVAL   = 4,        -- seconds between spawn waves
-    DEBRIS_SPAWN_PER_WAVE   = 3,        -- chunks per wave
-    DEBRIS_INITIAL_BURST    = 12,       -- chunks spawned on server start
-    DEBRIS_SPEED            = 60,       -- studs/s initial velocity toward base
+    DEBRIS_SPAWN_INTERVAL   = 1,        -- seconds between spawn waves
+    DEBRIS_SPAWN_PER_WAVE   = 25,        -- chunks per wave
+    DEBRIS_INITIAL_BURST    = 100,       -- chunks spawned on server start
+    DEBRIS_SPEED            = 50,       -- studs/s initial velocity toward base
     DEBRIS_SPAWN_HEIGHT     = 800,      -- Y altitude debris spawns from
-    DEBRIS_HEALTH           = 100,
+    DEBRIS_HEALTH           = 200,
     DEBRIS_LIFETIME         = 120,      -- seconds before auto-cleanup
     DEBRIS_SURFACE_SNAP_DELAY = 5,      -- seconds before anchoring on ground
-    DEBRIS_HIT_COOLDOWN     = 0.5,      -- dedup window for repeated hits
+    DEBRIS_HIT_COOLDOWN     = 0.2,      -- dedup window for repeated hits
     DAMAGE_FLASH_DURATION   = 0.06,     -- seconds part flashes red on hit
 
     FRAGMENTS_ON_DEATH      = 3,        -- collectible fragments per debris death
     DEBRIS_DEATH_PIECES     = 27,       -- visual shards on death
-    DEBRIS_CARGO_CHANCE     = 0.10,     -- fraction of shards becoming collectible
-    DEBRIS_COLLECT_RADIUS   = 20,       -- studs for auto-collect proximity
-    ORE_MAGNET_RADIUS       = 20,       -- studs — ore starts flying toward player
-    ORE_COLLECT_RADIUS      = 5,        -- studs — ore collected on arrival
-    ORE_SPAWN_INTERVAL      = 6,        -- seconds between ore spawns
-    ORE_MAX_COUNT           = 18,       -- max ore nodes alive at once
+    DEBRIS_CARGO_CHANCE     = 0.20,     -- fraction of shards becoming collectible
+    DEBRIS_COLLECT_RADIUS   = 50,       -- studs for auto-collect proximity
+    ORE_MAGNET_RADIUS       = 50,       -- studs — ore starts flying toward player
+    ORE_COLLECT_RADIUS      = 20,        -- studs — ore collected on arrival
+    ORE_SPAWN_INTERVAL      = 5,        -- seconds between ore spawns
+    ORE_MAX_COUNT           = 500,       -- max ore nodes alive at once
 
-    COLLECTIBLE_LIFETIME        = 60,   -- seconds before collectible despawns
+    COLLECTIBLE_LIFETIME        = 500,   -- seconds before collectible despawns
     COLLECTIBLE_BEACON_HEIGHT   = 90,   -- height of collection beacon beam
-    COLLECTIBLE_ROTATION_SPEED  = 1.4,  -- rad/s spin speed
+    COLLECTIBLE_ROTATION_SPEED  = 1.9,  -- rad/s spin speed
 
     -- ── Materials ────────────────────────────────────────────────────────────
     -- Raw materials dropped by debris. weight = relative spawn probability.

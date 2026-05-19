@@ -235,7 +235,7 @@ local function update(dt)
             local approxSize = chunk:IsA("BasePart") and chunk.Size.X or 4
             local contactDist = live("SHIELD_RADIUS") + approxSize * 0.5
             if (chunkPos - pos).Magnitude < contactDist then
-                hitDebrisEvent:FireServer(chunk)
+                hitDebrisEvent:FireServer(chunk, live("SHIELD_DAMAGE"))
                 hits += 1
                 energy = math.max(0, energy - live("SHIELD_ENERGY_DRAIN"))
                 updateEnergyUI()
