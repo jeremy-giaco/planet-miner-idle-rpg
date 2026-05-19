@@ -8,8 +8,8 @@ local TweenService      = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config            = require(ReplicatedStorage:WaitForChild("Config"))
 
-local R  = Config.PLANET_RADIUS
-local PC = Config.PLANET_CENTER
+local GROUND_Y  = Config.MAP_GROUND_Y
+local BASE_POS  = Config.BASE_POSITION
 
 local shipsFolder = Instance.new("Folder")
 shipsFolder.Name   = "PlayerShips"
@@ -19,8 +19,8 @@ shipsFolder.Parent = workspace
 local hangarFolder = workspace:WaitForChild("Hangar", 30)
 local bayDoor      = hangarFolder and hangarFolder:WaitForChild("BayDoor", 10)
 
-local doorClosedY = bayDoor and bayDoor:GetAttribute("ClosedY") or (R + 718)
-local doorOpenY   = bayDoor and bayDoor:GetAttribute("OpenY")   or (R + 760)
+local doorClosedY = bayDoor and bayDoor:GetAttribute("ClosedY") or (GROUND_Y + 18)
+local doorOpenY   = bayDoor and bayDoor:GetAttribute("OpenY")   or (GROUND_Y + 60)
 
 local doorTween = TweenInfo.new(1.8, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
 
@@ -38,12 +38,10 @@ local function setDoor(open)
 end
 
 local function spawnShip(player)
-    -- Spawn inside hangar center, just above floor
-    -- Hangar floor Y = PLANET_RADIUS + 3 (floor thickness), center Z = northZ - HD/2
-    local northZ   = PC.Z - (Config.PLANET_RADIUS)   -- approximate: base sits at R, north wall at Z = -100
-    -- Use fixed hangar center offset from Config values
-    local hangarCenterZ = PC.Z - 100 - 27   -- northZ -100, centre of 55-deep hangar = -127.5
-    local shipPos = Vector3.new(PC.X, R + 15, hangarCenterZ)
+    -- Spawn inside hangar center, just above the flat ground floor.
+    -- Hangar is built at BASE_POSITION; center is ~100 studs north (negative Z) of base.
+    local hangarCenterZ = BASE_POS.Z - 127
+    local shipPos = Vector3.new(BASE_POS.X, GROUND_Y + 15, hangarCenterZ)
 
     local ship = Instance.new("Model")
     ship.Name   = player.Name .. "_Ship"
@@ -201,8 +199,8 @@ end
 -- Wire up the ProximityPrompt built by WorldGen inside the hangar.
 -- Teleports the triggering player's ship back to the hangar home position.
 task.spawn(function()
-    local hangarCenterZ = PC.Z - 100 - 27
-    local homePos = Vector3.new(PC.X, R + 15, hangarCenterZ)
+    local hangarCenterZ = BASE_POS.Z - 127
+    local homePos = Vector3.new(BASE_POS.X, GROUND_Y + 15, hangarCenterZ)
 
     -- Find the prompt (it lives on the screen Part inside the Hangar folder)
     local hangar = workspace:WaitForChild("Hangar", 30)

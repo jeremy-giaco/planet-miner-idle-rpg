@@ -11,8 +11,7 @@ local TweenService      = game:GetService("TweenService")
 local Config            = require(ReplicatedStorage:WaitForChild("Config"))
 local ClientSettings    = require(ReplicatedStorage:WaitForChild("ClientSettings"))
 
-local PLANET_RADIUS = Config.PLANET_RADIUS
-local PLANET_CENTER = Config.PLANET_CENTER
+local GROUND_Y = Config.MAP_GROUND_Y
 
 local player    = Players.LocalPlayer
 local shipsFolder = workspace:WaitForChild("PlayerShips")
@@ -439,7 +438,6 @@ RunService.Heartbeat:Connect(function(dt)
     if not inShip or not shipRoot or not hrp then return end
 
     local newPos = shipRoot.Position
-    local up     = (newPos - PLANET_CENTER).Unit
 
     -- ── Input ─────────────────────────────────────────────────────────────────
     local fwd, str, upInput = 0, 0, 0
@@ -495,33 +493,22 @@ RunService.Heartbeat:Connect(function(dt)
     local targetVel = moveDir * SPEED + Vector3.new(0, upVal * HOVER_BOOST, 0)
     shipVel = shipVel + (targetVel - shipVel) * math.min(dt * ACCEL, 1)
 
-    -- Hover: simple floor clamp (original feel)
-    local dx    = newPos.X - PLANET_CENTER.X
-    local dz    = newPos.Z - PLANET_CENTER.Z
-    local inner = PLANET_RADIUS * PLANET_RADIUS - dx * dx - dz * dz
-    local surfY = PLANET_CENTER.Y + (inner > 0 and math.sqrt(inner) or 0)
-
     -- Roll
     local targetRoll = -ROLL_MAX * yawMomentum
     roll = roll + (targetRoll - roll) * math.min(dt * TILT_SPEED, 1)
 
     local newPos2 = newPos + shipVel * dt
-    -- Radial floor clamp — works anywhere on the sphere, not just north pole
-    local fromCenter = newPos2 - PLANET_CENTER
-    local radialDist = fromCenter.Magnitude
-    local radialUp   = fromCenter.Unit
-    local minDist    = PLANET_RADIUS + HOVER_HEIGHT
-    if radialDist < minDist then
-        newPos2 = PLANET_CENTER + radialUp * minDist
-        local inward = shipVel:Dot(radialUp)
-        if inward < 0 then shipVel = shipVel - radialUp * inward end
+    -- Flat floor clamp
+    if newPos2.Y < GROUND_Y + HOVER_HEIGHT then
+        newPos2 = Vector3.new(newPos2.X, GROUND_Y + HOVER_HEIGHT, newPos2.Z)
+        if shipVel.Y < 0 then shipVel = Vector3.new(shipVel.X, 0, shipVel.Z) end
     end
 
     local shipUp = right:Cross(forward).Unit
     shipRoot.CFrame = CFrame.fromMatrix(newPos2, right, shipUp, -forward) * CFrame.Angles(0, 0, roll)
     shipRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 
-    local up2 = radialUp
+    local up2 = Vector3.new(0, 1, 0)
 
     -- Keep character welded inside ship (invisible)
     hrp.CFrame = shipRoot.CFrame * CFrame.new(0, 2, 0)
@@ -533,12 +520,11 @@ RunService.Heartbeat:Connect(function(dt)
     if beamActive and beamObj and beamEndAnchor then
         local aimPos
         if useTwinStick then
-            local tgtX   = newPos2.X + forward.X * BEAM_RANGE
-            local tgtZ   = newPos2.Z + forward.Z * BEAM_RANGE
-            local dx2    = tgtX - PLANET_CENTER.X
-            local dz2    = tgtZ - PLANET_CENTER.Z
-            local inner2 = PLANET_RADIUS * PLANET_RADIUS - dx2 * dx2 - dz2 * dz2
-            aimPos = Vector3.new(tgtX, PLANET_CENTER.Y + (inner2 > 0 and math.sqrt(inner2) or 0), tgtZ)
+            aimPos = Vector3.new(
+                newPos2.X + forward.X * BEAM_RANGE,
+                GROUND_Y,
+                newPos2.Z + forward.Z * BEAM_RANGE
+            )
         elseif rightMouseHeld then
             aimPos = lockedAimPos or (newPos2 - forward * 15)
         else
@@ -555,9 +541,7 @@ RunService.Heartbeat:Connect(function(dt)
 
         if beamTimer <= 0 and hitDebrisRemote then
             local beamDir
-            if rightMouseHeld then
-                beamDir = (PLANET_CENTER - newPos2).Unit
-            else
+            do
                 local mouse  = Players.LocalPlayer:GetMouse()
                 local camRay = workspace.CurrentCamera:ScreenPointToRay(mouse.X, mouse.Y)
                 beamDir = camRay.Direction
@@ -650,8 +634,7 @@ RunService.Heartbeat:Connect(function(dt)
     -- ── HUD update ────────────────────────────────────────────────────────────
     if hudSpeed then
         local spd = math.floor(shipVel.Magnitude + 0.5)
-        local fromCenter2 = newPos2 - PLANET_CENTER
-        local alt = math.floor(math.max(0, fromCenter2.Magnitude - PLANET_RADIUS) + 0.5)
+        local alt = math.floor(math.max(0, newPos2.Y - GROUND_Y) + 0.5)
         hudSpeed.Text   = string.format("SPD   %3d st/s", spd)
         hudAlt.Text     = string.format("ALT   %3d st",   alt)
         hudCamMode.Text = "CAM   " .. (camDist <= FP_DIST and "COCKPIT" or "CHASE  [V]")

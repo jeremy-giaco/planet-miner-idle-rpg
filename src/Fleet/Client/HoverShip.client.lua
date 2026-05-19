@@ -13,8 +13,7 @@ local TweenService      = game:GetService("TweenService")
 local Config            = require(ReplicatedStorage:WaitForChild("Config"))
 local ClientSettings    = require(ReplicatedStorage:WaitForChild("ClientSettings"))
 
-local PLANET_RADIUS = Config.PLANET_RADIUS
-local PLANET_CENTER = Config.PLANET_CENTER
+local GROUND_Y = Config.MAP_GROUND_Y
 
 local tool   = script.Parent
 local player = Players.LocalPlayer
@@ -192,7 +191,7 @@ local BURN_LIFE  = 0.6
 local BURN_FADE  = 0.5
 
 local function spawnBurnLight(pos)
-    local surfPos = PLANET_CENTER + (pos - PLANET_CENTER).Unit * PLANET_RADIUS
+    local surfPos = Vector3.new(pos.X, GROUND_Y, pos.Z)
     local p = Instance.new("Part")
     p.Size = Vector3.new(0.1, 0.1, 0.1); p.CFrame = CFrame.new(surfPos)
     p.Anchored = true; p.CanCollide = false; p.CanQuery = false
@@ -269,12 +268,8 @@ local function update(dt)
 
     local pos    = hrp.Position
     local newPos = pos + shipVel * dt
-    local dx     = newPos.X - PLANET_CENTER.X
-    local dz     = newPos.Z - PLANET_CENTER.Z
-    local inner  = PLANET_RADIUS * PLANET_RADIUS - dx * dx - dz * dz
-    local surfY  = PLANET_CENTER.Y + (inner > 0 and math.sqrt(inner) or 0)
-    if newPos.Y < surfY + HOVER_HEIGHT then
-        newPos = Vector3.new(newPos.X, surfY + HOVER_HEIGHT, newPos.Z)
+    if newPos.Y < GROUND_Y + HOVER_HEIGHT then
+        newPos = Vector3.new(newPos.X, GROUND_Y + HOVER_HEIGHT, newPos.Z)
         if shipVel.Y < 0 then shipVel = Vector3.new(shipVel.X, 0, shipVel.Z) end
     end
 
@@ -291,14 +286,12 @@ local function update(dt)
     if beamActive and beamObj and beamEndAnchor then
         local aimPos
         if useTwinStick then
-            -- On mobile aim beam directly ahead of ship
-            local tgtX   = newPos.X + forward.X * BEAM_RANGE
-            local tgtZ   = newPos.Z + forward.Z * BEAM_RANGE
-            local dx2    = tgtX - PLANET_CENTER.X
-            local dz2    = tgtZ - PLANET_CENTER.Z
-            local inner2 = PLANET_RADIUS * PLANET_RADIUS - dx2 * dx2 - dz2 * dz2
-            aimPos = Vector3.new(tgtX,
-                PLANET_CENTER.Y + (inner2 > 0 and math.sqrt(inner2) or 0), tgtZ)
+            -- On mobile aim beam directly ahead of ship at ground level
+            aimPos = Vector3.new(
+                newPos.X + forward.X * BEAM_RANGE,
+                GROUND_Y,
+                newPos.Z + forward.Z * BEAM_RANGE
+            )
         elseif rightMouseHeld then
             -- RMB held = beam stays fixed at the world position it was at when RMB was pressed
             aimPos = lockedAimPos or (newPos - forward * 15)
@@ -319,12 +312,7 @@ local function update(dt)
         end
 
         if beamTimer <= 0 and hitDebrisRemote then
-            local beamDir
-            if rightMouseHeld then
-                beamDir = (PLANET_CENTER - newPos).Unit
-            else
-                beamDir = (aimPos - newPos).Unit
-            end
+            local beamDir = (aimPos - newPos).Unit
             -- Blockcast along full beam length so anything the beam passes through gets hit
             local beamLength = (aimPos - newPos).Magnitude
             local beamCF     = CFrame.lookAt(newPos, newPos + beamDir) * CFrame.new(0, 0, -beamLength / 2)

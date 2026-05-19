@@ -9,18 +9,18 @@ local UserInputService  = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config            = require(ReplicatedStorage:WaitForChild("Config"))
 
-local PLANET_CENTER = Config.PLANET_CENTER
-
 local character = script.Parent
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 local torso     = character:WaitForChild("UpperTorso")
 
-local THRUST          = 520    -- must exceed workspace.Gravity (196) to climb; 520 = strong lift
-local MAX_UP_SPEED    = 140   -- terminal ascent speed (studs/s)
-local JETPACK_DELAY   = 0.3   -- seconds of held Space before jetpack fires (on ground)
-local FORWARD_THRUST  = 580   -- horizontal boost while airborne and moving
-local MAX_HORIZ_SPEED = 120   -- max horizontal speed from jetpack (studs/s)
+local THRUST          = Config.JETPACK_THRUST
+local MAX_UP_SPEED    = Config.JETPACK_MAX_UP_SPEED
+local JETPACK_DELAY   = Config.JETPACK_ACTIVATION_DELAY
+local FORWARD_THRUST  = Config.JETPACK_FORWARD_THRUST
+local MAX_HORIZ_SPEED = Config.JETPACK_MAX_HORIZ_SPEED
+
+local UP = Vector3.new(0, 1, 0)
 
 -- ── Jetpack model ─────────────────────────────────────────────────────────────
 
@@ -164,7 +164,7 @@ RunService.Heartbeat:Connect(function(dt)
         local shouldThrust = (not onGround) or (spaceHeld >= JETPACK_DELAY)
 
         if shouldThrust then
-            local upDir   = (hrp.Position - PLANET_CENTER).Unit
+            local upDir   = UP
             local vel     = hrp.AssemblyLinearVelocity
             local upSpeed = vel:Dot(upDir)
             if upSpeed < MAX_UP_SPEED then
