@@ -72,6 +72,9 @@
         },
         "HoverShip": {
           "$path": "src/Fleet/Client/HoverShip.client.lua"
+        },
+        "TachyiteEffect": {
+          "$path": "src/Character/Client/TachyiteEffect.client.lua"
         }
       },
       "StarterCharacterScripts": {

@@ -24,7 +24,9 @@ local function applySpeed()
     -- If shift is held, use opposite of current toggle state
     local wantRun = isRunning
     if shiftHeld then wantRun = not wantRun end
-    humanoid.WalkSpeed = wantRun and runSpeed() or walkSpeed()
+    local base  = wantRun and runSpeed() or walkSpeed()
+    local bonus = (wantRun and _G.TachyiteBonus) or 0
+    humanoid.WalkSpeed = base + (bonus or 0)
 end
 
 -- R toggles run/walk

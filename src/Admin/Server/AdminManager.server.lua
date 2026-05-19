@@ -49,6 +49,10 @@ local TUNABLES = {
     DEBRIS_SPAWN_INTERVAL  = { min = 0.5,  max = 60,   isServer = false },
     DEBRIS_SPAWN_PER_WAVE  = { min = 1,    max = 20,   isServer = false },
     DEBRIS_CARGO_CHANCE    = { min = 0,    max = 1,    isServer = false },
+    -- Tachyite
+    TACHYITE_DROP_CHANCE   = { min = 0,    max = 1,    isServer = false },
+    TACHYITE_SPEED_BONUS   = { min = 0,    max = 200,  isServer = false },
+    TACHYITE_DURATION      = { min = 5,    max = 600,  isServer = false },
 }
 
 -- Build MAT_WEIGHT_<name> tunables from Config.MATERIALS

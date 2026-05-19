@@ -43,6 +43,7 @@ remote("SetDroneMode")        -- client → server: player changed drone mode
 remote("ShipExited")          -- client → server: player exited ship (close hangar door)
 
 remote("ConfigUpdated")       -- server → client: a config value changed live (key, value)
+remote("TachyitePickup")      -- server → client: tachyite orb collected (stackCount)
 rfunc("AdminCommand")         -- client → server: admin tweaks a config value, returns ok/err
 
 -- ── Server ↔ Server ───────────────────────────────────────────────────────────

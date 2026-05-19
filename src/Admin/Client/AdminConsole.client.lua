@@ -86,6 +86,14 @@ local SECTIONS = {
         },
     },
     {
+        title = "TACHYITE",
+        rows  = {
+            { label = "Drop Chance",    key = "TACHYITE_DROP_CHANCE",  step = 0.01 },
+            { label = "Speed Bonus",    key = "TACHYITE_SPEED_BONUS",  step = 5    },
+            { label = "Duration (s)",   key = "TACHYITE_DURATION",     step = 10   },
+        },
+    },
+    {
         title = "MATERIAL WEIGHTS",
         rows  = matWeightRows,
     },

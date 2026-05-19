@@ -27,6 +27,7 @@ local hitDebrisEvent       = remotes:WaitForChild("HitDebris")
 local collectFragmentEvent = remotes:WaitForChild("CollectFragment")
 local registerCollectible  = remotes:WaitForChild("RegisterCollectible")
 local serverHitDebris      = remotes:WaitForChild("ServerHitDebris")
+local tachyitePickup       = remotes:WaitForChild("TachyitePickup")
 
 -- ── Folders ───────────────────────────────────────────────────────────────────
 
@@ -492,6 +493,9 @@ local function applyDamage(chunk, damage)
                 task.spawn(spawnShard, pos)
             end
         end
+        if math.random() < Config.TACHYITE_DROP_CHANCE then
+            task.spawn(spawnTachyite, pos)
+        end
     else
         chunk:SetAttribute("Health", hp)
     end
@@ -537,6 +541,46 @@ end)
 -- ── Proximity + magnet collection ────────────────────────────────────────────
 
 local FRAG_MAGNET_SPEED   = 28    -- base studs/sec (reads Config.ORE_MAGNET_RADIUS / ORE_COLLECT_RADIUS live)
+
+-- ── Tachyite orbs ─────────────────────────────────────────────────────────────
+
+local activeTachyites = {}   -- { part, magnetized, magnetConn }
+
+local TACHYITE_COLOR  = Color3.fromRGB(60, 130, 255)
+local TACHYITE_RADIUS = 1.6
+
+local function spawnTachyite(origin)
+    local orb      = Instance.new("Part")
+    orb.Shape      = Enum.PartType.Ball
+    orb.Size       = Vector3.new(TACHYITE_RADIUS*2, TACHYITE_RADIUS*2, TACHYITE_RADIUS*2)
+    orb.Color      = TACHYITE_COLOR
+    orb.Material   = Enum.Material.Neon
+    orb.CanCollide = false
+    orb.CastShadow = false
+    orb.Anchored   = false
+    orb.Position   = origin + Vector3.new(
+        math.random(-4, 4), math.random(2, 6), math.random(-4, 4))
+    orb.Parent     = Workspace
+
+    local light     = Instance.new("PointLight")
+    light.Color     = TACHYITE_COLOR
+    light.Brightness = 3
+    light.Range     = 20
+    light.Parent    = orb
+
+    -- gentle float: give a tiny upward nudge so it bobs
+    orb.AssemblyLinearVelocity = Vector3.new(0, 6, 0)
+
+    local entry = { part = orb, magnetized = false, magnetConn = nil }
+    table.insert(activeTachyites, entry)
+
+    -- auto-despawn after collectible lifetime
+    task.delay(Config.COLLECTIBLE_LIFETIME, function()
+        if orb and orb.Parent then
+            orb:Destroy()
+        end
+    end)
+end
 
 local function collectFragment(entry, plr, i)
     local p       = entry.part
@@ -593,6 +637,58 @@ task.spawn(function()
             end
         end
     end
+end)
+
+-- ── Tachyite proximity + magnet ──────────────────────────────────────────────
+-- Per-player stack counts tracked server-side for the FireClient call.
+
+local playerTachyiteStacks = {}   -- [Player] = number
+
+task.spawn(function()
+    while true do
+        task.wait(0.15)
+        for i = #activeTachyites, 1, -1 do
+            local entry = activeTachyites[i]
+            local p     = entry.part
+            if not (p and p.Parent) then
+                table.remove(activeTachyites, i)
+                continue
+            end
+            for _, plr in ipairs(Players:GetPlayers()) do
+                local char = plr.Character
+                local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+                if not hrp then continue end
+                local dist = (hrp.Position - p.Position).Magnitude
+                if dist <= Config.ORE_COLLECT_RADIUS then
+                    -- Collect
+                    if entry.magnetConn then entry.magnetConn:Disconnect() end
+                    table.remove(activeTachyites, i)
+                    p:Destroy()
+                    playerTachyiteStacks[plr] = (playerTachyiteStacks[plr] or 0) + 1
+                    tachyitePickup:FireClient(plr, playerTachyiteStacks[plr])
+                    break
+                elseif dist <= Config.ORE_MAGNET_RADIUS and not entry.magnetized then
+                    entry.magnetized = true
+                    local targetPlr  = plr
+                    entry.magnetConn = RunService.Heartbeat:Connect(function(dt)
+                        if not (p and p.Parent) then return end
+                        local tHrp = targetPlr.Character and targetPlr.Character:FindFirstChild("HumanoidRootPart")
+                        if not tHrp then return end
+                        local toPlayer = tHrp.Position - p.Position
+                        local d        = toPlayer.Magnitude
+                        local speed    = FRAG_MAGNET_SPEED * (1 + (Config.ORE_MAGNET_RADIUS - d) / Config.ORE_MAGNET_RADIUS * 3)
+                        local step     = math.min(d, speed * dt)
+                        p.CFrame       = CFrame.new(p.Position + toPlayer.Unit * step)
+                    end)
+                end
+            end
+        end
+    end
+end)
+
+-- Reset stack count when player leaves (so rejoining doesn't carry ghosts)
+Players.PlayerRemoving:Connect(function(plr)
+    playerTachyiteStacks[plr] = nil
 end)
 
 -- ── Spawn loop ────────────────────────────────────────────────────────────────

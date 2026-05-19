@@ -35,6 +35,12 @@ return {
     RUN_SPEED       = 22,           -- run speed (toggle with R)
     JUMP_POWER      = 50,           -- default Roblox jump power
 
+    -- ── Tachyite ──────────────────────────────────────────────────────────────
+
+    TACHYITE_DROP_CHANCE    = 0.08,     -- probability per debris death
+    TACHYITE_SPEED_BONUS    = 10,       -- run-speed added per stack
+    TACHYITE_DURATION       = 180,      -- seconds before all stacks expire
+
     -- ── Jetpack ──────────────────────────────────────────────────────────────
 
     JETPACK_THRUST              = 520,
