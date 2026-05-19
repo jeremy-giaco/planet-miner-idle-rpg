@@ -462,6 +462,8 @@ local function spawnDebris()
     end)
 end
 
+local spawnTachyite  -- forward declaration; defined in the Tachyite section below
+
 -- ── Damage / death ────────────────────────────────────────────────────────────
 
 local function applyDamage(chunk, damage)
@@ -549,7 +551,7 @@ local activeTachyites = {}   -- { part, magnetized, magnetConn }
 local TACHYITE_COLOR  = Color3.fromRGB(60, 130, 255)
 local TACHYITE_RADIUS = 1.6
 
-local function spawnTachyite(origin)
+spawnTachyite = function(origin)
     local orb      = Instance.new("Part")
     orb.Shape      = Enum.PartType.Ball
     orb.Size       = Vector3.new(TACHYITE_RADIUS*2, TACHYITE_RADIUS*2, TACHYITE_RADIUS*2)
