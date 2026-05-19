@@ -1,111 +1,85 @@
 -- Admin/Client/AdminConsole.client.lua
--- Minimal live-tuning panel. Toggle with F9 (or backtick `).
--- Only visible if the server grants admin.
+-- Live-tuning panel. Toggle with F8 or backtick.
+-- +/- apply immediately. Hold to auto-repeat with acceleration.
+-- ↺ Reset  → restores every value to Config.lua defaults this session.
+-- 💾 Save  → persists current live values to DataStore (survives restarts).
 if not game:GetService("RunService"):IsClient() then return end
 
-local Players           = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService  = game:GetService("UserInputService")
-local RunService        = game:GetService("RunService")
+local Players          = game:GetService("Players")
+local ReplicatedStorage= game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local RunService       = game:GetService("RunService")
 
-local Config  = require(ReplicatedStorage:WaitForChild("Config"))
-local remotes = ReplicatedStorage:WaitForChild("Remotes")
-local adminCmd     = remotes:WaitForChild("AdminCommand")
-local configUpdate = remotes:WaitForChild("ConfigUpdated")
+local Config      = require(ReplicatedStorage:WaitForChild("Config"))
+local remotes     = ReplicatedStorage:WaitForChild("Remotes")
+local adminCmd    = remotes:WaitForChild("AdminCommand")
+local configUpdate= remotes:WaitForChild("ConfigUpdated")
+local player      = Players.LocalPlayer
 
-local player = Players.LocalPlayer
-
--- ── Live config mirror (client side) ─────────────────────────────────────────
--- Jetpack reads this table each frame once we hook it up.
+-- ── Live config mirror ────────────────────────────────────────────────────────
 
 local LiveConfig = {}
 for k, v in pairs(Config) do
     if type(v) == "number" then LiveConfig[k] = v end
 end
--- Seed material weight keys
 for _, mat in ipairs(Config.MATERIALS) do
     LiveConfig["MAT_WEIGHT_" .. mat.name] = mat.weight
 end
-_G.LiveConfig = LiveConfig   -- Jetpack.client.lua reads _G.LiveConfig if present
+_G.LiveConfig = LiveConfig
 
 configUpdate.OnClientEvent:Connect(function(key, value)
     LiveConfig[key] = value
 end)
 
--- ── Layout data ───────────────────────────────────────────────────────────────
+-- ── Section / row definitions ─────────────────────────────────────────────────
 
--- Build material weight rows dynamically from Config
 local matWeightRows = {}
 for _, mat in ipairs(Config.MATERIALS) do
     table.insert(matWeightRows, {
         label = mat.name .. " (" .. mat.rarity .. ")",
         key   = "MAT_WEIGHT_" .. mat.name,
         step  = 1,
-        color = mat.color,   -- tint the label to the material colour
+        color = mat.color,
     })
 end
 
 local SECTIONS = {
-    {
-        title = "MOVEMENT",
-        rows  = {
-            { label = "Walk Speed",    key = "WALK_SPEED",    step = 1  },
-            { label = "Run Speed",     key = "RUN_SPEED",     step = 2  },
-            { label = "Gravity",       key = "GRAVITY",       step = 10 },
-        },
-    },
-    {
-        title = "JETPACK",
-        rows  = {
-            { label = "Up Thrust",     key = "JETPACK_THRUST",          step = 20 },
-            { label = "Fwd Thrust",    key = "JETPACK_FORWARD_THRUST",  step = 20 },
-            { label = "Max Up Speed",  key = "JETPACK_MAX_UP_SPEED",    step = 5  },
-            { label = "Max Fwd Speed", key = "JETPACK_MAX_HORIZ_SPEED", step = 5  },
-        },
-    },
-    {
-        title = "COLLECTION",
-        rows  = {
-            { label = "Magnet Radius", key = "ORE_MAGNET_RADIUS",  step = 2 },
-            { label = "Collect Dist",  key = "ORE_COLLECT_RADIUS", step = 1 },
-        },
-    },
-    {
-        title = "ORE SPAWNING",
-        rows  = {
-            { label = "Spawn Interval", key = "ORE_SPAWN_INTERVAL", step = 1  },
-            { label = "Max Ore Count",  key = "ORE_MAX_COUNT",       step = 5  },
-        },
-    },
-    {
-        title = "DEBRIS",
-        rows  = {
-            { label = "Wave Interval",  key = "DEBRIS_SPAWN_INTERVAL", step = 1    },
-            { label = "Per Wave",       key = "DEBRIS_SPAWN_PER_WAVE", step = 1    },
-            { label = "Drop Chance",    key = "DEBRIS_CARGO_CHANCE",   step = 0.05 },
-        },
-    },
-    {
-        title = "SHIELD",
-        rows  = {
-            { label = "Radius (studs)",  key = "SHIELD_RADIUS",        step = 1    },
-            { label = "Energy Max",      key = "SHIELD_ENERGY_MAX",    step = 10   },
-            { label = "Drain / Hit",     key = "SHIELD_ENERGY_DRAIN",  step = 1    },
-            { label = "Recharge /s",     key = "SHIELD_RECHARGE_RATE", step = 5    },
-        },
-    },
-    {
-        title = "TACHYITE",
-        rows  = {
-            { label = "Drop Chance",    key = "TACHYITE_DROP_CHANCE",  step = 0.01 },
-            { label = "Speed Bonus",    key = "TACHYITE_SPEED_BONUS",  step = 5    },
-            { label = "Duration (s)",   key = "TACHYITE_DURATION",     step = 10   },
-        },
-    },
-    {
-        title = "MATERIAL WEIGHTS",
-        rows  = matWeightRows,
-    },
+    { title = "MOVEMENT", rows = {
+        { label = "Walk Speed",    key = "WALK_SPEED",    step = 1  },
+        { label = "Run Speed",     key = "RUN_SPEED",     step = 2  },
+        { label = "Gravity",       key = "GRAVITY",       step = 10 },
+    }},
+    { title = "JETPACK", rows = {
+        { label = "Up Thrust",     key = "JETPACK_THRUST",          step = 20 },
+        { label = "Fwd Thrust",    key = "JETPACK_FORWARD_THRUST",  step = 20 },
+        { label = "Max Up Speed",  key = "JETPACK_MAX_UP_SPEED",    step = 5  },
+        { label = "Max Fwd Speed", key = "JETPACK_MAX_HORIZ_SPEED", step = 5  },
+    }},
+    { title = "COLLECTION", rows = {
+        { label = "Magnet Radius", key = "ORE_MAGNET_RADIUS",  step = 2 },
+        { label = "Collect Dist",  key = "ORE_COLLECT_RADIUS", step = 1 },
+    }},
+    { title = "ORE SPAWNING", rows = {
+        { label = "Spawn Interval", key = "ORE_SPAWN_INTERVAL", step = 1 },
+        { label = "Max Ore Count",  key = "ORE_MAX_COUNT",      step = 5 },
+    }},
+    { title = "DEBRIS", rows = {
+        { label = "Wave Interval",  key = "DEBRIS_SPAWN_INTERVAL", step = 1    },
+        { label = "Per Wave",       key = "DEBRIS_SPAWN_PER_WAVE", step = 1    },
+        { label = "Drop Chance",    key = "DEBRIS_CARGO_CHANCE",   step = 0.05 },
+    }},
+    { title = "SHIELD", rows = {
+        { label = "Radius (studs)",  key = "SHIELD_RADIUS",        step = 1  },
+        { label = "Energy Max",      key = "SHIELD_ENERGY_MAX",    step = 10 },
+        { label = "Drain / Hit",     key = "SHIELD_ENERGY_DRAIN",  step = 1  },
+        { label = "Recharge /s",     key = "SHIELD_RECHARGE_RATE", step = 5  },
+    }},
+    { title = "TACHYITE", rows = {
+        { label = "Drop Chance",    key = "TACHYITE_DROP_CHANCE",  step = 0.01 },
+        { label = "Speed Bonus",    key = "TACHYITE_SPEED_BONUS",  step = 5    },
+        { label = "Duration (s)",   key = "TACHYITE_DURATION",     step = 10   },
+    }},
+    { title = "MATERIAL WEIGHTS", rows = matWeightRows },
 }
 
 -- ── Colours ───────────────────────────────────────────────────────────────────
@@ -121,6 +95,7 @@ local C = {
     green   = Color3.fromRGB( 60, 210, 120),
     red     = Color3.fromRGB(220,  60,  60),
     gold    = Color3.fromRGB(255, 200,  60),
+    orange  = Color3.fromRGB(255, 140,  40),
 }
 
 -- ── Build UI ──────────────────────────────────────────────────────────────────
@@ -128,128 +103,188 @@ local C = {
 local pg = player:WaitForChild("PlayerGui")
 
 local sg = Instance.new("ScreenGui")
-sg.Name            = "AdminConsole"
-sg.ResetOnSpawn    = false
-sg.ZIndexBehavior  = Enum.ZIndexBehavior.Sibling
-sg.IgnoreGuiInset  = true
-sg.Enabled         = false
-sg.Parent          = pg
+sg.Name           = "AdminConsole"
+sg.ResetOnSpawn   = false
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+sg.IgnoreGuiInset = true
+sg.Enabled        = false
+sg.Parent         = pg
 
-local PANEL_W      = 340
-local TITLE_H      = 32
-local STATUS_H     = 26
-local MAX_PANEL_H  = 560   -- max visible height before scrolling kicks in
+local PANEL_W  = 340
+local TITLE_H  = 36
+local STATUS_H = 24
+local PAD      = 8
 
--- Outer draggable frame (fixed height, clipped)
+-- Outer frame — full screen height
 local frame = Instance.new("Frame")
-frame.Name              = "Panel"
-frame.Size              = UDim2.new(0, PANEL_W, 0, MAX_PANEL_H)
-frame.Position          = UDim2.new(0, 20, 0, 60)
-frame.BackgroundColor3  = C.bg
-frame.BorderSizePixel   = 0
-frame.ClipsDescendants  = true
-frame.Parent            = sg
+frame.Name             = "Panel"
+frame.Size             = UDim2.new(0, PANEL_W, 1, 0)
+frame.Position         = UDim2.new(0, 20, 0, 0)
+frame.BackgroundColor3 = C.bg
+frame.BorderSizePixel  = 0
+frame.ClipsDescendants = true
+frame.Parent           = sg
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
-
 local uiStroke = Instance.new("UIStroke", frame)
 uiStroke.Color = C.neon; uiStroke.Thickness = 1; uiStroke.Transparency = 0.6
 
--- Title bar (sits above scroll area, always visible)
+-- ── Title bar ─────────────────────────────────────────────────────────────────
+
 local titleBar = Instance.new("Frame")
-titleBar.Size              = UDim2.new(1, 0, 0, TITLE_H)
-titleBar.BackgroundColor3  = C.header
-titleBar.BorderSizePixel   = 0
-titleBar.Parent            = frame
+titleBar.Size             = UDim2.new(1, 0, 0, TITLE_H)
+titleBar.BackgroundColor3 = C.header
+titleBar.BorderSizePixel  = 0
+titleBar.Parent           = frame
 Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 8)
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size                   = UDim2.new(1, -12, 1, 0)
-titleLabel.Position               = UDim2.new(0, 12, 0, 0)
+titleLabel.Size               = UDim2.new(1, -200, 1, 0)
+titleLabel.Position           = UDim2.new(0, 10, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text                   = "⚙  ADMIN CONSOLE   [F8 / `]"
-titleLabel.Font                   = Enum.Font.GothamBold
-titleLabel.TextSize               = 13
-titleLabel.TextColor3             = C.neon
-titleLabel.TextXAlignment         = Enum.TextXAlignment.Left
-titleLabel.Parent                 = titleBar
+titleLabel.Text               = "⚙  ADMIN   [F8/`]"
+titleLabel.Font               = Enum.Font.GothamBold
+titleLabel.TextSize           = 12
+titleLabel.TextColor3         = C.neon
+titleLabel.TextXAlignment     = Enum.TextXAlignment.Left
+titleLabel.Parent             = titleBar
 
--- Status bar pinned at bottom of outer frame
+local function makeTitleBtn(text, xOffset, bgColor, txtColor)
+    local btn = Instance.new("TextButton")
+    btn.Size             = UDim2.new(0, 82, 0, 24)
+    btn.Position         = UDim2.new(1, xOffset, 0.5, -12)
+    btn.BackgroundColor3 = bgColor
+    btn.BorderSizePixel  = 0
+    btn.Text             = text
+    btn.Font             = Enum.Font.GothamBold
+    btn.TextSize         = 10
+    btn.TextColor3       = txtColor
+    btn.Parent           = titleBar
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
+    return btn
+end
+
+local btnReset = makeTitleBtn("↺  RESET",    -174, C.header, C.orange)
+local btnSave  = makeTitleBtn("💾  SAVE DEF", -86,  C.green,  C.bg)
+
+-- UIStroke on reset button so it's visible against header
+local resetStroke = Instance.new("UIStroke", btnReset)
+resetStroke.Color = C.orange; resetStroke.Thickness = 1.2
+
+-- ── Status bar ────────────────────────────────────────────────────────────────
+
 local statusLabel = Instance.new("TextLabel")
-statusLabel.Name                   = "Status"
-statusLabel.Size                   = UDim2.new(1, -12, 0, STATUS_H)
-statusLabel.Position               = UDim2.new(0, 8, 1, -STATUS_H - 2)
+statusLabel.Name               = "Status"
+statusLabel.Size               = UDim2.new(1, -12, 0, STATUS_H)
+statusLabel.Position           = UDim2.new(0, 8, 1, -STATUS_H - 2)
 statusLabel.BackgroundTransparency = 1
-statusLabel.Text                   = ""
-statusLabel.Font                   = Enum.Font.Gotham
-statusLabel.TextSize               = 11
-statusLabel.TextColor3             = C.green
-statusLabel.TextXAlignment         = Enum.TextXAlignment.Left
-statusLabel.ZIndex                 = 10
-statusLabel.Parent                 = frame
+statusLabel.Text               = ""
+statusLabel.Font               = Enum.Font.Gotham
+statusLabel.TextSize           = 11
+statusLabel.TextColor3         = C.green
+statusLabel.TextXAlignment     = Enum.TextXAlignment.Left
+statusLabel.ZIndex             = 10
+statusLabel.Parent             = frame
 
--- ScrollingFrame fills the space between title bar and status bar
+local function setStatus(msg, color, duration)
+    statusLabel.Text       = msg
+    statusLabel.TextColor3 = color or C.green
+    if duration then
+        task.delay(duration, function()
+            if statusLabel.Text == msg then statusLabel.Text = "" end
+        end)
+    end
+end
+
+-- ── Scroll area ───────────────────────────────────────────────────────────────
+
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Name                   = "Scroll"
-scrollFrame.Size                   = UDim2.new(1, 0, 1, -(TITLE_H + STATUS_H + 4))
-scrollFrame.Position               = UDim2.new(0, 0, 0, TITLE_H)
+scrollFrame.Size                = UDim2.new(1, 0, 1, -(TITLE_H + STATUS_H + 4))
+scrollFrame.Position            = UDim2.new(0, 0, 0, TITLE_H)
 scrollFrame.BackgroundTransparency = 1
-scrollFrame.BorderSizePixel        = 0
-scrollFrame.ScrollBarThickness     = 4
-scrollFrame.ScrollBarImageColor3   = C.neon
-scrollFrame.CanvasSize             = UDim2.new(0, 0, 0, 0)  -- updated after rows built
-scrollFrame.AutomaticCanvasSize    = Enum.AutomaticSize.Y
-scrollFrame.ElasticBehavior        = Enum.ElasticBehavior.Never
-scrollFrame.Parent                 = frame
+scrollFrame.BorderSizePixel     = 0
+scrollFrame.ScrollBarThickness  = 4
+scrollFrame.ScrollBarImageColor3= C.neon
+scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrollFrame.CanvasSize          = UDim2.new(0, 0, 0, 0)
+scrollFrame.ElasticBehavior     = Enum.ElasticBehavior.Never
+scrollFrame.Parent              = frame
 
 -- ── Row builder ───────────────────────────────────────────────────────────────
 
-local ROW_H      = 30
-local SEC_HDR_H  = 22
-local PAD        = 8
+local ROW_H     = 28
+local SEC_HDR_H = 22
+local valueLabels = {}   -- key → TextLabel showing current value
 
-local inputs = {}   -- key → TextBox ref
-
-local function makeLabel(parent, text, size, pos, color, font, align)
-    local l = Instance.new("TextLabel")
-    l.Size                   = size
-    l.Position               = pos
-    l.BackgroundTransparency = 1
-    l.Text                   = text
-    l.Font                   = font or Enum.Font.Gotham
-    l.TextSize               = 12
-    l.TextColor3             = color or C.text
-    l.TextXAlignment         = align or Enum.TextXAlignment.Left
-    l.Parent                 = parent
-    return l
-end
-
-local function sendValue(key, rawText)
-    local num = tonumber(rawText)
-    if not num then
-        statusLabel.Text       = "✗  not a number"
-        statusLabel.TextColor3 = C.red
-        return
-    end
-    statusLabel.Text       = "..."
-    statusLabel.TextColor3 = C.dim
-
+local function sendValue(key, num)
     task.spawn(function()
         local ok, msg = adminCmd:InvokeServer(key, num)
         if ok then
-            statusLabel.Text       = "✓  " .. msg
-            statusLabel.TextColor3 = C.green
-            -- refresh the box to show clamped value
-            if inputs[key] then
-                inputs[key].Text = tostring(LiveConfig[key] or num)
+            setStatus("✓  " .. msg, C.green, 2)
+            if valueLabels[key] then
+                valueLabels[key].Text = tostring(LiveConfig[key] or num)
             end
         else
-            statusLabel.Text       = "✗  " .. (msg or "error")
-            statusLabel.TextColor3 = C.red
+            setStatus("✗  " .. (msg or "error"), C.red, 3)
         end
     end)
 end
 
-local curY = 4   -- padding inside scroll frame
+-- Hold-to-repeat with acceleration
+-- Phase 1: 0.35s initial delay before first repeat
+-- Phase 2: repeats at step×1 for 1s, then step×4, then step×16 (caps there)
+local function attachHold(btn, key, stepSign, getStep)
+    local holding     = false
+    local holdConn
+
+    local function startHold()
+        holding = true
+        -- initial delay before auto-repeat
+        task.delay(0.35, function()
+            if not holding then return end
+            local multiplier = 1
+            local elapsed    = 0
+            holdConn = RunService.Heartbeat:Connect(function(dt)
+                if not holding then
+                    holdConn:Disconnect(); holdConn = nil; return
+                end
+                elapsed += dt
+                -- accelerate: 4× after 1s, 16× after 2.5s
+                if elapsed > 2.5 then
+                    multiplier = 16
+                elseif elapsed > 1.0 then
+                    multiplier = 4
+                else
+                    multiplier = 1
+                end
+                local step = getStep() * multiplier
+                -- fire roughly 10 times/sec
+                if elapsed % 0.1 < dt then
+                    local cur = LiveConfig[key] or 0
+                    local nv  = cur + step * stepSign
+                    sendValue(key, nv)
+                end
+            end)
+        end)
+    end
+
+    local function stopHold()
+        holding = false
+        if holdConn then holdConn:Disconnect(); holdConn = nil end
+    end
+
+    btn.MouseButton1Down:Connect(startHold)
+    btn.MouseButton1Up:Connect(stopHold)
+    btn.MouseLeave:Connect(stopHold)
+
+    -- single click (fires on Up before hold kicks in if released quickly)
+    btn.MouseButton1Click:Connect(function()
+        local cur = LiveConfig[key] or 0
+        local nv  = cur + getStep() * stepSign
+        sendValue(key, nv)
+    end)
+end
+
+local curY = 4
 
 for _, sec in ipairs(SECTIONS) do
     -- Section header
@@ -260,147 +295,150 @@ for _, sec in ipairs(SECTIONS) do
     hdr.BorderSizePixel  = 0
     hdr.Parent           = scrollFrame
     Instance.new("UICorner", hdr).CornerRadius = UDim.new(0, 4)
-    makeLabel(hdr, sec.title, UDim2.new(1,-8,1,0), UDim2.new(0,8,0,0),
-        C.gold, Enum.Font.GothamBold)
-    curY = curY + SEC_HDR_H + 8
+    local hl = Instance.new("TextLabel", hdr)
+    hl.Size = UDim2.new(1,-8,1,0); hl.Position = UDim2.new(0,8,0,0)
+    hl.BackgroundTransparency = 1; hl.Text = sec.title
+    hl.Font = Enum.Font.GothamBold; hl.TextSize = 11
+    hl.TextColor3 = C.gold; hl.TextXAlignment = Enum.TextXAlignment.Left
+    curY = curY + SEC_HDR_H + 6
 
     for _, row in ipairs(sec.rows) do
-        local currentVal = LiveConfig[row.key] or Config[row.key] or 0
-
-        -- Row label (material weight rows use the material's colour)
-        makeLabel(scrollFrame, row.label,
-            UDim2.new(0, 130, 0, ROW_H),
-            UDim2.new(0, PAD + 4, 0, curY),
-            row.color or C.text)
-
-        -- Text input
-        local box = Instance.new("TextBox")
-        box.Size                  = UDim2.new(0, 90, 0, 22)
-        box.Position              = UDim2.new(0, 148, 0, curY + 4)
-        box.BackgroundColor3      = C.panel
-        box.BorderSizePixel       = 0
-        box.Text                  = tostring(currentVal)
-        box.Font                  = Enum.Font.GothamBold
-        box.TextSize              = 13
-        box.TextColor3            = C.neon
-        box.ClearTextOnFocus      = false
-        box.PlaceholderText       = "value"
-        box.Parent                = scrollFrame
-        Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
-        Instance.new("UIStroke", box).Color        = C.neon
-
-        inputs[row.key] = box
-
-        -- Send on Enter / focus-lost
         local key = row.key
-        box.FocusLost:Connect(function(enterPressed)
-            if enterPressed then sendValue(key, box.Text) end
-        end)
+
+        -- Label
+        local lbl = Instance.new("TextLabel", scrollFrame)
+        lbl.Size               = UDim2.new(0, 138, 0, ROW_H)
+        lbl.Position           = UDim2.new(0, PAD + 4, 0, curY)
+        lbl.BackgroundTransparency = 1
+        lbl.Text               = row.label
+        lbl.Font               = Enum.Font.Gotham
+        lbl.TextSize           = 11
+        lbl.TextColor3         = row.color or C.text
+        lbl.TextXAlignment     = Enum.TextXAlignment.Left
+        lbl.TextYAlignment     = Enum.TextYAlignment.Center
 
         -- − button
-        local btnMinus = Instance.new("TextButton")
-        btnMinus.Size              = UDim2.new(0, 22, 0, 22)
-        btnMinus.Position          = UDim2.new(0, 244, 0, curY + 4)
-        btnMinus.BackgroundColor3  = C.header
-        btnMinus.BorderSizePixel   = 0
-        btnMinus.Text              = "−"
-        btnMinus.Font              = Enum.Font.GothamBold
-        btnMinus.TextSize          = 14
-        btnMinus.TextColor3        = C.dim
-        btnMinus.Parent            = scrollFrame
-        Instance.new("UICorner", btnMinus).CornerRadius = UDim.new(0, 4)
-        btnMinus.MouseButton1Click:Connect(function()
-            local v = tonumber(box.Text) or (LiveConfig[key] or 0)
-            box.Text = tostring(v - row.step)
-            sendValue(key, box.Text)
-        end)
+        local btnM = Instance.new("TextButton", scrollFrame)
+        btnM.Size             = UDim2.new(0, 28, 0, 22)
+        btnM.Position         = UDim2.new(0, 150, 0, curY + 3)
+        btnM.BackgroundColor3 = C.header
+        btnM.BorderSizePixel  = 0
+        btnM.Text             = "−"
+        btnM.Font             = Enum.Font.GothamBold
+        btnM.TextSize         = 16
+        btnM.TextColor3       = C.red
+        Instance.new("UICorner", btnM).CornerRadius = UDim.new(0, 4)
+        local ms = Instance.new("UIStroke", btnM)
+        ms.Color = C.red; ms.Thickness = 1; ms.Transparency = 0.6
+
+        -- Value display
+        local valLbl = Instance.new("TextLabel", scrollFrame)
+        valLbl.Size               = UDim2.new(0, 80, 0, 22)
+        valLbl.Position           = UDim2.new(0, 182, 0, curY + 3)
+        valLbl.BackgroundColor3   = C.panel
+        valLbl.BackgroundTransparency = 0
+        valLbl.BorderSizePixel    = 0
+        valLbl.Text               = tostring(LiveConfig[key] or Config[key] or 0)
+        valLbl.Font               = Enum.Font.GothamBold
+        valLbl.TextSize           = 12
+        valLbl.TextColor3         = C.neon
+        valLbl.TextXAlignment     = Enum.TextXAlignment.Center
+        Instance.new("UICorner", valLbl).CornerRadius = UDim.new(0, 4)
+        Instance.new("UIStroke", valLbl).Color        = C.neon
+        valueLabels[key] = valLbl
 
         -- + button
-        local btnPlus = Instance.new("TextButton")
-        btnPlus.Size              = UDim2.new(0, 22, 0, 22)
-        btnPlus.Position          = UDim2.new(0, 270, 0, curY + 4)
-        btnPlus.BackgroundColor3  = C.header
-        btnPlus.BorderSizePixel   = 0
-        btnPlus.Text              = "+"
-        btnPlus.Font              = Enum.Font.GothamBold
-        btnPlus.TextSize          = 14
-        btnPlus.TextColor3        = C.neon
-        btnPlus.Parent            = scrollFrame
-        Instance.new("UICorner", btnPlus).CornerRadius = UDim.new(0, 4)
-        btnPlus.MouseButton1Click:Connect(function()
-            local v = tonumber(box.Text) or (LiveConfig[key] or 0)
-            box.Text = tostring(v + row.step)
-            sendValue(key, box.Text)
-        end)
+        local btnP = Instance.new("TextButton", scrollFrame)
+        btnP.Size             = UDim2.new(0, 28, 0, 22)
+        btnP.Position         = UDim2.new(0, 266, 0, curY + 3)
+        btnP.BackgroundColor3 = C.header
+        btnP.BorderSizePixel  = 0
+        btnP.Text             = "+"
+        btnP.Font             = Enum.Font.GothamBold
+        btnP.TextSize         = 16
+        btnP.TextColor3       = C.green
+        Instance.new("UICorner", btnP).CornerRadius = UDim.new(0, 4)
+        local ps = Instance.new("UIStroke", btnP)
+        ps.Color = C.green; ps.Thickness = 1; ps.Transparency = 0.6
 
-        -- Apply button
-        local btnApply = Instance.new("TextButton")
-        btnApply.Size              = UDim2.new(0, 36, 0, 22)
-        btnApply.Position          = UDim2.new(0, 298, 0, curY + 4)
-        btnApply.BackgroundColor3  = C.neon
-        btnApply.BorderSizePixel   = 0
-        btnApply.Text              = "SET"
-        btnApply.Font              = Enum.Font.GothamBold
-        btnApply.TextSize          = 11
-        btnApply.TextColor3        = C.bg
-        btnApply.Parent            = scrollFrame
-        Instance.new("UICorner", btnApply).CornerRadius = UDim.new(0, 4)
-        btnApply.MouseButton1Click:Connect(function()
-            sendValue(key, box.Text)
-        end)
+        attachHold(btnM, key, -1, function() return row.step end)
+        attachHold(btnP, key,  1, function() return row.step end)
 
         curY = curY + ROW_H
     end
 
-    curY = curY + 6   -- gap after section
+    curY = curY + 8
 end
 
+-- ── Keep value labels in sync ─────────────────────────────────────────────────
 
--- ── Drag behaviour ────────────────────────────────────────────────────────────
+configUpdate.OnClientEvent:Connect(function(key, value)
+    LiveConfig[key] = value
+    if valueLabels[key] then
+        valueLabels[key].Text = tostring(value)
+    end
+end)
+
+-- ── Reset to Config defaults ──────────────────────────────────────────────────
+
+btnReset.MouseButton1Click:Connect(function()
+    setStatus("Resetting…", C.orange)
+    task.spawn(function()
+        local ok, msg = adminCmd:InvokeServer("RESET_DEFAULTS", 0)
+        if ok then
+            setStatus("✓  Reset to Config defaults", C.orange, 3)
+        else
+            setStatus("✗  " .. (msg or "error"), C.red, 3)
+        end
+    end)
+end)
+
+-- ── Save as defaults ──────────────────────────────────────────────────────────
+
+btnSave.MouseButton1Click:Connect(function()
+    setStatus("Saving…", C.dim)
+    task.spawn(function()
+        local ok, msg = adminCmd:InvokeServer("SAVE_DEFAULTS", 0)
+        if ok then
+            setStatus("✓  Saved as defaults", C.green, 3)
+        else
+            setStatus("✗  " .. (msg or "error"), C.red, 3)
+        end
+    end)
+end)
+
+-- ── Drag ─────────────────────────────────────────────────────────────────────
 
 local dragging, dragStart, startPos
 titleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging  = true
-        dragStart = input.Position
-        startPos  = frame.Position
+        dragging = true; dragStart = input.Position; startPos = frame.Position
     end
 end)
 UserInputService.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(
-            startPos.X.Scale, startPos.X.Offset + delta.X,
-            startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        local d = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X,
+                                    startPos.Y.Scale, startPos.Y.Offset + d.Y)
     end
 end)
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 end)
 
 -- ── Toggle ────────────────────────────────────────────────────────────────────
 
--- Refresh boxes whenever panel opens so values are current
-local function refreshBoxes()
-    for key, box in pairs(inputs) do
-        box.Text = tostring(LiveConfig[key] or Config[key] or "")
+local function refreshValues()
+    for key, lbl in pairs(valueLabels) do
+        lbl.Text = tostring(LiveConfig[key] or Config[key] or "")
     end
 end
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
     if input.KeyCode == Enum.KeyCode.F8
     or input.KeyCode == Enum.KeyCode.Backquote then
         sg.Enabled = not sg.Enabled
-        if sg.Enabled then refreshBoxes() end
-    end
-end)
-
--- Keep LiveConfig in sync as server sends updates
-configUpdate.OnClientEvent:Connect(function(key, value)
-    if inputs[key] and not inputs[key]:IsFocused() then
-        inputs[key].Text = tostring(value)
+        if sg.Enabled then refreshValues() end
     end
 end)
