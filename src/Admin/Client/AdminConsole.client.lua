@@ -40,44 +40,45 @@ for _, mat in ipairs(Config.MATERIALS) do
         key   = "MAT_WEIGHT_" .. mat.name,
         step  = 1,
         color = mat.color,
+        desc  = mat.description .. "\nRelative spawn weight — higher = drops more often vs other materials.",
     })
 end
 
 local SECTIONS = {
     { title = "MOVEMENT", rows = {
-        { label = "Walk Speed",    key = "WALK_SPEED",    step = 1  },
-        { label = "Run Speed",     key = "RUN_SPEED",     step = 2  },
-        { label = "Gravity",       key = "GRAVITY",       step = 10 },
+        { label = "Walk Speed",    key = "WALK_SPEED",    step = 1,  desc = "Slow walk speed (studs/s). Default mode when toggle is off. R key switches walk/run." },
+        { label = "Run Speed",     key = "RUN_SPEED",     step = 2,  desc = "Base run speed (studs/s). Tachyite stacks add on top of this when running." },
+        { label = "Gravity",       key = "GRAVITY",       step = 10, desc = "Workspace gravity (studs/s²). Default Roblox is 196.2. Lower = floatier, moon-like movement." },
     }},
     { title = "JETPACK", rows = {
-        { label = "Up Thrust",     key = "JETPACK_THRUST",          step = 20 },
-        { label = "Fwd Thrust",    key = "JETPACK_FORWARD_THRUST",  step = 20 },
-        { label = "Max Up Speed",  key = "JETPACK_MAX_UP_SPEED",    step = 5  },
-        { label = "Max Fwd Speed", key = "JETPACK_MAX_HORIZ_SPEED", step = 5  },
+        { label = "Up Thrust",     key = "JETPACK_THRUST",          step = 20, desc = "Upward force applied while Space is held. Higher = faster vertical ascent." },
+        { label = "Fwd Thrust",    key = "JETPACK_FORWARD_THRUST",  step = 20, desc = "Horizontal thrust when flying forward. Higher = faster lateral movement." },
+        { label = "Max Up Speed",  key = "JETPACK_MAX_UP_SPEED",    step = 5,  desc = "Terminal vertical velocity cap (studs/s). Prevents infinite upward acceleration." },
+        { label = "Max Fwd Speed", key = "JETPACK_MAX_HORIZ_SPEED", step = 5,  desc = "Terminal horizontal velocity cap (studs/s). Prevents infinite forward acceleration." },
     }},
     { title = "COLLECTION", rows = {
-        { label = "Magnet Radius", key = "ORE_MAGNET_RADIUS",  step = 2 },
-        { label = "Collect Dist",  key = "ORE_COLLECT_RADIUS", step = 1 },
+        { label = "Magnet Radius", key = "ORE_MAGNET_RADIUS",  step = 2, desc = "Distance (studs) at which ore starts flying toward the player automatically." },
+        { label = "Collect Dist",  key = "ORE_COLLECT_RADIUS", step = 1, desc = "Distance (studs) at which ore is actually collected. Must be smaller than Magnet Radius." },
     }},
     { title = "ORE SPAWNING", rows = {
-        { label = "Spawn Interval", key = "ORE_SPAWN_INTERVAL", step = 1 },
-        { label = "Max Ore Count",  key = "ORE_MAX_COUNT",      step = 5 },
+        { label = "Spawn Interval", key = "ORE_SPAWN_INTERVAL", step = 1, desc = "Seconds between ore node spawn ticks. Lower = ore appears more frequently." },
+        { label = "Max Ore Count",  key = "ORE_MAX_COUNT",      step = 5, desc = "Maximum ore nodes alive at once. New spawns are skipped when this cap is reached." },
     }},
     { title = "DEBRIS", rows = {
-        { label = "Wave Interval",  key = "DEBRIS_SPAWN_INTERVAL", step = 1    },
-        { label = "Per Wave",       key = "DEBRIS_SPAWN_PER_WAVE", step = 1    },
-        { label = "Drop Chance",    key = "DEBRIS_CARGO_CHANCE",   step = 0.05 },
+        { label = "Wave Interval",  key = "DEBRIS_SPAWN_INTERVAL", step = 1,    desc = "Seconds between debris spawn waves. Lower = more frequent asteroid rain." },
+        { label = "Per Wave",       key = "DEBRIS_SPAWN_PER_WAVE", step = 1,    desc = "Number of debris chunks spawned each wave. Stacks with wave interval for total rate." },
+        { label = "Drop Chance",    key = "DEBRIS_CARGO_CHANCE",   step = 0.05, desc = "Fraction of death shards that become collectible materials (0–1). 0.1 = 10% of shards." },
     }},
     { title = "SHIELD", rows = {
-        { label = "Radius (studs)",  key = "SHIELD_RADIUS",        step = 1  },
-        { label = "Energy Max",      key = "SHIELD_ENERGY_MAX",    step = 10 },
-        { label = "Drain / Hit",     key = "SHIELD_ENERGY_DRAIN",  step = 1  },
-        { label = "Recharge /s",     key = "SHIELD_RECHARGE_RATE", step = 5  },
+        { label = "Radius (studs)",  key = "SHIELD_RADIUS",        step = 1,  desc = "Size of the energy bubble (studs). Debris within this radius gets destroyed." },
+        { label = "Energy Max",      key = "SHIELD_ENERGY_MAX",    step = 10, desc = "Total shield energy capacity. More = shield lasts longer before depleting." },
+        { label = "Drain / Hit",     key = "SHIELD_ENERGY_DRAIN",  step = 1,  desc = "Energy lost each time the shield destroys a debris chunk. Lower = longer lasting." },
+        { label = "Recharge /s",     key = "SHIELD_RECHARGE_RATE", step = 5,  desc = "Energy restored per second while the shield tool is unequipped." },
     }},
     { title = "TACHYITE", rows = {
-        { label = "Drop Chance",    key = "TACHYITE_DROP_CHANCE",  step = 0.01 },
-        { label = "Speed Bonus",    key = "TACHYITE_SPEED_BONUS",  step = 5    },
-        { label = "Duration (s)",   key = "TACHYITE_DURATION",     step = 10   },
+        { label = "Drop Chance",    key = "TACHYITE_DROP_CHANCE",  step = 0.01, desc = "Probability (0–1) that a blue speed orb drops on each debris death. 0.08 = 8% chance." },
+        { label = "Speed Bonus",    key = "TACHYITE_SPEED_BONUS",  step = 5,    desc = "Run speed added per Tachyite stack. Stacks accumulate until the timer expires." },
+        { label = "Duration (s)",   key = "TACHYITE_DURATION",     step = 10,   desc = "Seconds before all Tachyite stacks expire. Resets to full on every new pickup." },
     }},
     { title = "MATERIAL WEIGHTS", rows = matWeightRows },
 }
@@ -110,7 +111,7 @@ sg.IgnoreGuiInset = true
 sg.Enabled        = false
 sg.Parent         = pg
 
-local PANEL_W  = 340
+local PANEL_W  = 360   -- slightly wider to fit info icon
 local TITLE_H  = 36
 local STATUS_H = 24
 local PAD      = 8
@@ -208,6 +209,64 @@ scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 scrollFrame.CanvasSize          = UDim2.new(0, 0, 0, 0)
 scrollFrame.ElasticBehavior     = Enum.ElasticBehavior.Never
 scrollFrame.Parent              = frame
+
+-- ── Tooltip ───────────────────────────────────────────────────────────────────
+-- Floats above the panel (high ZIndex), repositioned on each hover.
+
+local tooltip = Instance.new("Frame")
+tooltip.Name               = "Tooltip"
+tooltip.Size               = UDim2.new(0, 220, 0, 60)   -- height auto-adjusts via SizeConstraint
+tooltip.BackgroundColor3   = Color3.fromRGB(12, 16, 32)
+tooltip.BackgroundTransparency = 0.08
+tooltip.BorderSizePixel    = 0
+tooltip.Visible            = false
+tooltip.ZIndex             = 50
+tooltip.Parent             = sg
+Instance.new("UICorner", tooltip).CornerRadius = UDim.new(0, 6)
+local ttStroke = Instance.new("UIStroke", tooltip)
+ttStroke.Color = C.neon; ttStroke.Thickness = 1; ttStroke.Transparency = 0.5
+
+local ttLabel = Instance.new("TextLabel", tooltip)
+ttLabel.Size               = UDim2.new(1, -14, 1, -10)
+ttLabel.Position           = UDim2.new(0, 7, 0, 5)
+ttLabel.BackgroundTransparency = 1
+ttLabel.Text               = ""
+ttLabel.Font               = Enum.Font.Gotham
+ttLabel.TextSize           = 11
+ttLabel.TextColor3         = Color3.fromRGB(190, 200, 225)
+ttLabel.TextXAlignment     = Enum.TextXAlignment.Left
+ttLabel.TextYAlignment     = Enum.TextYAlignment.Top
+ttLabel.TextWrapped        = true
+ttLabel.ZIndex             = 51
+
+-- Auto-size the tooltip height to fit wrapped text
+local ttSizeConst = Instance.new("UISizeConstraint", tooltip)
+ttSizeConst.MinSize = Vector2.new(220, 30)
+
+local function showTooltip(desc, iconAbsPos)
+    ttLabel.Text    = desc
+    -- Measure approximate height needed (rough: ~14px per line, ~28 chars/line at 220px width)
+    local charsPerLine = 32
+    local lines = 0
+    for seg in (desc .. "\n"):gmatch("([^\n]*)\n") do
+        lines += math.max(1, math.ceil(#seg / charsPerLine))
+    end
+    local ttH = math.max(36, lines * 15 + 12)
+    tooltip.Size = UDim2.new(0, 220, 0, ttH)
+
+    -- Position: to the right of the panel, aligned to the icon row
+    local px = frame.AbsolutePosition.X + PANEL_W + 8
+    local py = iconAbsPos.Y - 4
+    -- Clamp so it doesn't go off the bottom of the screen
+    local screenH = sg.AbsoluteSize.Y
+    py = math.min(py, screenH - ttH - 8)
+    tooltip.Position = UDim2.new(0, px, 0, py)
+    tooltip.Visible  = true
+end
+
+local function hideTooltip()
+    tooltip.Visible = false
+end
 
 -- ── Row builder ───────────────────────────────────────────────────────────────
 
@@ -363,6 +422,37 @@ for _, sec in ipairs(SECTIONS) do
 
         attachHold(btnM, key, -1, function() return row.step end)
         attachHold(btnP, key,  1, function() return row.step end)
+
+        -- ⓘ info icon (only if row has a description)
+        if row.desc then
+            local info = Instance.new("TextButton", scrollFrame)
+            info.Size             = UDim2.new(0, 16, 0, 16)
+            info.Position         = UDim2.new(0, 298, 0, curY + 6)
+            info.BackgroundColor3 = C.header
+            info.BorderSizePixel  = 0
+            info.Text             = "i"
+            info.Font             = Enum.Font.GothamBold
+            info.TextSize         = 10
+            info.TextColor3       = C.dim
+            info.AutoButtonColor  = false
+            Instance.new("UICorner", info).CornerRadius = UDim.new(1, 0)
+            local iStroke = Instance.new("UIStroke", info)
+            iStroke.Color = C.dim; iStroke.Thickness = 1; iStroke.Transparency = 0.4
+
+            local desc = row.desc
+            info.MouseEnter:Connect(function()
+                iStroke.Color  = C.neon
+                info.TextColor3= C.neon
+                showTooltip(desc, info.AbsolutePosition)
+            end)
+            info.MouseLeave:Connect(function()
+                iStroke.Color  = C.dim
+                info.TextColor3= C.dim
+                hideTooltip()
+            end)
+            -- prevent click from doing anything
+            info.MouseButton1Click:Connect(function() end)
+        end
 
         curY = curY + ROW_H
     end
