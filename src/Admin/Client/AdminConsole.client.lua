@@ -148,11 +148,13 @@ local TITLE_H  = 36
 local STATUS_H = 24
 local PAD      = 8
 
--- Outer frame — full screen height
+-- Outer frame — full height minus top/bottom margin to clear Roblox UI chrome
+local TOP_MARGIN    = 48   -- clears the Roblox top bar
+local BOTTOM_MARGIN = 52   -- clears the hotbar / bottom buttons
 local frame = Instance.new("Frame")
 frame.Name             = "Panel"
-frame.Size             = UDim2.new(0, PANEL_W, 1, 0)
-frame.Position         = UDim2.new(0, 20, 0, 0)
+frame.Size             = UDim2.new(0, PANEL_W, 1, -(TOP_MARGIN + BOTTOM_MARGIN))
+frame.Position         = UDim2.new(0, 20, 0, TOP_MARGIN)
 frame.BackgroundColor3 = C.bg
 frame.BorderSizePixel  = 0
 frame.ClipsDescendants = true
@@ -175,7 +177,7 @@ titleLabel.Size               = UDim2.new(1, -200, 1, 0)
 titleLabel.Position           = UDim2.new(0, 10, 0, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Text               = "⚙  ADMIN   [F8/`]"
-titleLabel.Font               = Enum.Font.GothamBold
+titleLabel.Font               = Enum.Font.GothamMedium
 titleLabel.TextSize           = 12
 titleLabel.TextColor3         = C.neon
 titleLabel.TextXAlignment     = Enum.TextXAlignment.Left
@@ -188,7 +190,7 @@ local function makeTitleBtn(text, xOffset, bgColor, txtColor)
     btn.BackgroundColor3 = bgColor
     btn.BorderSizePixel  = 0
     btn.Text             = text
-    btn.Font             = Enum.Font.GothamBold
+    btn.Font             = Enum.Font.GothamMedium
     btn.TextSize         = 10
     btn.TextColor3       = txtColor
     btn.Parent           = titleBar
@@ -415,7 +417,7 @@ for _, sec in ipairs(SECTIONS) do
         btnM.BackgroundColor3 = C.header
         btnM.BorderSizePixel  = 0
         btnM.Text             = "−"
-        btnM.Font             = Enum.Font.GothamBold
+        btnM.Font             = Enum.Font.GothamMedium
         btnM.TextSize         = 16
         btnM.TextColor3       = C.red
         Instance.new("UICorner", btnM).CornerRadius = UDim.new(0, 4)
@@ -430,7 +432,7 @@ for _, sec in ipairs(SECTIONS) do
         valLbl.BackgroundTransparency = 0
         valLbl.BorderSizePixel    = 0
         valLbl.Text               = tostring(LiveConfig[key] or Config[key] or 0)
-        valLbl.Font               = Enum.Font.GothamBold
+        valLbl.Font               = Enum.Font.Gotham
         valLbl.TextSize           = 12
         valLbl.TextColor3         = C.neon
         valLbl.TextXAlignment     = Enum.TextXAlignment.Center
@@ -445,7 +447,7 @@ for _, sec in ipairs(SECTIONS) do
         btnP.BackgroundColor3 = C.header
         btnP.BorderSizePixel  = 0
         btnP.Text             = "+"
-        btnP.Font             = Enum.Font.GothamBold
+        btnP.Font             = Enum.Font.GothamMedium
         btnP.TextSize         = 16
         btnP.TextColor3       = C.green
         Instance.new("UICorner", btnP).CornerRadius = UDim.new(0, 4)
@@ -463,7 +465,7 @@ for _, sec in ipairs(SECTIONS) do
             info.BackgroundColor3 = C.header
             info.BorderSizePixel  = 0
             info.Text             = "i"
-            info.Font             = Enum.Font.GothamBold
+            info.Font             = Enum.Font.GothamMedium
             info.TextSize         = 10
             info.TextColor3       = C.dim
             info.AutoButtonColor  = false
