@@ -440,12 +440,22 @@ local function spawnDebris()
     local mat = pickMaterial()
     local chunk = makeChunk(spawnPos, s, mat.color, Config.DEBRIS_HEALTH, mat)
 
-    -- Horizontal drift toward the base + downward push, so chunks streak across the sky
-    local hAngle   = math.random() * math.pi * 2
-    local tanDir   = Vector3.new(math.cos(hAngle), 0, math.sin(hAngle))
-    local tanSpeed = 40 + math.random() * 40
-    local dnSpeed  = 30 + math.random() * 30
-    chunk:ApplyImpulse((tanDir * tanSpeed + Vector3.new(0, -dnSpeed, 0)) * chunk:GetMass())
+    -- Aim toward the base with some spread so it's not perfectly accurate
+    local toBase    = Vector3.new(-x, 0, -z)
+    local dist      = toBase.Magnitude
+    local baseDir   = dist > 0 and toBase.Unit or Vector3.new(0, 0, 1)
+    -- Random spread: deflect up to 25° off the base direction
+    local spread    = math.rad(25)
+    local angle     = (math.random() * 2 - 1) * spread
+    local cosA, sinA = math.cos(angle), math.sin(angle)
+    local aimDir    = Vector3.new(
+        baseDir.X * cosA - baseDir.Z * sinA,
+        0,
+        baseDir.X * sinA + baseDir.Z * cosA
+    )
+    local hSpeed    = Config.DEBRIS_SPEED + math.random() * 20
+    local dnSpeed   = 30 + math.random() * 30
+    chunk:ApplyImpulse((aimDir * hSpeed + Vector3.new(0, -dnSpeed, 0)) * chunk:GetMass())
 
     -- Force-snap fallback after Config.DEBRIS_SURFACE_SNAP_DELAY seconds
     task.delay(Config.DEBRIS_SURFACE_SNAP_DELAY, function()
