@@ -143,14 +143,14 @@ sg.IgnoreGuiInset = true
 sg.Enabled        = false
 sg.Parent         = pg
 
-local PANEL_W  = 420
+local PANEL_W  = 500
 local TITLE_H  = 36
 local STATUS_H = 24
 local PAD      = 8
 
 -- Outer frame — full height minus top/bottom margin to clear Roblox UI chrome
-local TOP_MARGIN    = 48   -- clears the Roblox top bar
-local BOTTOM_MARGIN = 52   -- clears the hotbar / bottom buttons
+local TOP_MARGIN    = 36   -- clears the Roblox top bar
+local BOTTOM_MARGIN = 44   -- clears the hotbar / bottom buttons
 local frame = Instance.new("Frame")
 frame.Name             = "Panel"
 frame.Size             = UDim2.new(0, PANEL_W, 1, -(TOP_MARGIN + BOTTOM_MARGIN))
@@ -177,33 +177,29 @@ titleLabel.Size               = UDim2.new(1, -200, 1, 0)
 titleLabel.Position           = UDim2.new(0, 10, 0, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Text               = "⚙  ADMIN   [F8/`]"
-titleLabel.Font               = Enum.Font.GothamMedium
-titleLabel.TextSize           = 14
+titleLabel.Font               = Enum.Font.Code
+titleLabel.TextSize           = 15
 titleLabel.TextColor3         = C.neon
 titleLabel.TextXAlignment     = Enum.TextXAlignment.Left
 titleLabel.Parent             = titleBar
 
-local function makeTitleBtn(text, xOffset, bgColor, txtColor)
+local function makeTitleBtn(text, xOffset)
     local btn = Instance.new("TextButton")
-    btn.Size             = UDim2.new(0, 96, 0, 24)
+    btn.Size             = UDim2.new(0, 88, 0, 24)
     btn.Position         = UDim2.new(1, xOffset, 0.5, -12)
-    btn.BackgroundColor3 = bgColor
+    btn.BackgroundColor3 = C.green
     btn.BorderSizePixel  = 0
     btn.Text             = text
-    btn.Font             = Enum.Font.GothamMedium
-    btn.TextSize         = 13
-    btn.TextColor3       = txtColor
+    btn.Font             = Enum.Font.Code
+    btn.TextSize         = 14
+    btn.TextColor3       = C.bg
     btn.Parent           = titleBar
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
     return btn
 end
 
-local btnReset = makeTitleBtn("↺  RESET",       -200, C.header, C.orange)
-local btnSave  = makeTitleBtn("💾  SAVE DEFAULT", -104, C.green,  C.bg)
-
--- UIStroke on reset button so it's visible against header
-local resetStroke = Instance.new("UIStroke", btnReset)
-resetStroke.Color = C.orange; resetStroke.Thickness = 1.2
+local btnReset = makeTitleBtn("Reset",   -186)
+local btnSave  = makeTitleBtn("Save",    -92)
 
 -- ── Status bar ────────────────────────────────────────────────────────────────
 
@@ -214,6 +210,7 @@ statusLabel.Position           = UDim2.new(0, 8, 1, -STATUS_H - 2)
 statusLabel.BackgroundTransparency = 1
 statusLabel.Text               = ""
 statusLabel.Font               = Enum.Font.Gotham
+statusLabel.Font               = Enum.Font.Code
 statusLabel.TextSize           = 13
 statusLabel.TextColor3         = C.green
 statusLabel.TextXAlignment     = Enum.TextXAlignment.Left
@@ -266,6 +263,7 @@ ttLabel.Position           = UDim2.new(0, 7, 0, 5)
 ttLabel.BackgroundTransparency = 1
 ttLabel.Text               = ""
 ttLabel.Font               = Enum.Font.Gotham
+ttLabel.Font               = Enum.Font.Code
 ttLabel.TextSize           = 13
 ttLabel.TextColor3         = Color3.fromRGB(190, 200, 225)
 ttLabel.TextXAlignment     = Enum.TextXAlignment.Left
@@ -391,7 +389,7 @@ for _, sec in ipairs(SECTIONS) do
     local hl = Instance.new("TextLabel", hdr)
     hl.Size = UDim2.new(1,-8,1,0); hl.Position = UDim2.new(0,8,0,0)
     hl.BackgroundTransparency = 1; hl.Text = sec.title
-    hl.Font = Enum.Font.GothamBold; hl.TextSize = 13
+    hl.Font = Enum.Font.Code; hl.TextSize = 13
     hl.TextColor3 = C.gold; hl.TextXAlignment = Enum.TextXAlignment.Left
     curY = curY + SEC_HDR_H + 6
 
@@ -404,7 +402,7 @@ for _, sec in ipairs(SECTIONS) do
         lbl.Position           = UDim2.new(0, PAD + 4, 0, curY)
         lbl.BackgroundTransparency = 1
         lbl.Text               = row.label
-        lbl.Font               = Enum.Font.Gotham
+        lbl.Font               = Enum.Font.Code
         lbl.TextSize           = 13
         lbl.TextColor3         = row.color or C.text
         lbl.TextXAlignment     = Enum.TextXAlignment.Left
@@ -417,7 +415,7 @@ for _, sec in ipairs(SECTIONS) do
         btnM.BackgroundColor3 = C.header
         btnM.BorderSizePixel  = 0
         btnM.Text             = "−"
-        btnM.Font             = Enum.Font.GothamMedium
+        btnM.Font             = Enum.Font.Code
         btnM.TextSize         = 16
         btnM.TextColor3       = C.red
         Instance.new("UICorner", btnM).CornerRadius = UDim.new(0, 4)
@@ -447,7 +445,7 @@ for _, sec in ipairs(SECTIONS) do
         btnP.BackgroundColor3 = C.header
         btnP.BorderSizePixel  = 0
         btnP.Text             = "+"
-        btnP.Font             = Enum.Font.GothamMedium
+        btnP.Font             = Enum.Font.Code
         btnP.TextSize         = 16
         btnP.TextColor3       = C.green
         Instance.new("UICorner", btnP).CornerRadius = UDim.new(0, 4)
@@ -465,7 +463,7 @@ for _, sec in ipairs(SECTIONS) do
             info.BackgroundColor3 = C.header
             info.BorderSizePixel  = 0
             info.Text             = "i"
-            info.Font             = Enum.Font.GothamMedium
+            info.Font             = Enum.Font.Code
             info.TextSize         = 13
             info.TextColor3       = C.dim
             info.AutoButtonColor  = false
