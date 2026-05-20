@@ -336,7 +336,8 @@ local function attachHold(btn, key, stepSign, getStep)
             local elapsed    = 0
             holdConn = RunService.Heartbeat:Connect(function(dt)
                 if not holding then
-                    holdConn:Disconnect(); holdConn = nil; return
+                    if holdConn then holdConn:Disconnect(); holdConn = nil end
+                    return
                 end
                 elapsed += dt
                 -- accelerate: 4× after 1s, 16× after 2.5s
