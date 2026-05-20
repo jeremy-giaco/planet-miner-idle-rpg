@@ -46,20 +46,21 @@ local energyFill, energyLabel, shieldFrame
 local function makeSphere(radius, color, transparency)
     local r = radius or live("SHIELD_RADIUS")
     local p = Instance.new("Part")
-    p.Shape       = Enum.PartType.Ball
-    p.Size        = Vector3.new(r * 2, r * 2, r * 2)
-    p.CFrame      = hrp.CFrame
-    p.Color       = color
-    p.Material    = Enum.Material.Neon
+    p.Shape        = Enum.PartType.Ball
+    p.Size         = Vector3.new(r * 2, r * 2, r * 2)
+    p.CFrame       = hrp.CFrame
+    p.Color        = color
+    p.Material     = Enum.Material.Neon
     p.Transparency = transparency
-    p.CanCollide  = false
-    p.CastShadow  = false
-    p.Anchored    = false
-    p.Parent      = workspace
-    local w = Instance.new("WeldConstraint")
-    w.Part0 = hrp; w.Part1 = p; w.Parent = hrp
+    p.CanCollide   = false
+    p.CanQuery     = false
+    p.CastShadow   = false
+    p.Anchored     = true   -- anchored + manual CFrame each frame; no weld needed
+    p.Parent       = workspace
+    -- NOTE: No WeldConstraint — welds parented to HRP replicate to the server
+    -- and corrupt server-side HRP physics (Part1 is local-only).
+    -- We manually set CFrame in the update loop instead.
     table.insert(shieldParts, p)
-    table.insert(shieldParts, w)
     return p
 end
 
@@ -205,6 +206,14 @@ end
 local function update(dt)
     if not hrp or not hrp.Parent then return end
     if not active then return end
+
+    -- Track spheres to HRP (replaces WeldConstraint — keeps everything client-local)
+    if outerSphere and outerSphere.Parent then
+        outerSphere.CFrame = hrp.CFrame
+    end
+    if innerSphere and innerSphere.Parent then
+        innerSphere.CFrame = hrp.CFrame
+    end
 
     -- Pulse outer shell
     pulseT += dt * 2.5
