@@ -16,13 +16,25 @@ local saveSettings    = remotes:WaitForChild("SaveSettings")
 local VALID_MODES = { classic = true, ["twin-stick"] = true, ["tap-to-fly"] = true, gyro = true }
 
 Players.PlayerAdded:Connect(function(player)
-    -- Wait for DataStore to populate, then send settings to client
-    task.wait(1)
-    local data = _G.PlayerData and _G.PlayerData.get(player)
-    if data then
-        if data.settings  then loadSettings:FireClient(player, data.settings) end
-        loadInventory:FireClient(player, data.materials or {})
+    -- Poll until DataStore finishes loading for this player (GetAsync can take several seconds)
+    local data
+    local waited = 0
+    repeat
+        task.wait(0.1)
+        waited += 0.1
+        data = _G.PlayerData and _G.PlayerData.get(player)
+    until data ~= nil or waited >= 15
+
+    if not data then
+        warn("[SettingsHandler] Timed out waiting for data for", player.Name)
+        return
     end
+
+    if not player or not player.Parent then return end  -- player left during load
+
+    if data.settings then loadSettings:FireClient(player, data.settings) end
+    loadInventory:FireClient(player, data.materials or {})
+    print("[SettingsHandler] Sent inventory to", player.Name, "after", string.format("%.1fs", waited))
 end)
 
 saveSettings.OnServerEvent:Connect(function(player, key, value)
