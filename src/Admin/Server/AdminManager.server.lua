@@ -94,35 +94,64 @@ end
 
 local TUNABLES = {
     -- Movement
-    GRAVITY                 = { min = 10,   max = 500,  isServer = true,
+    GRAVITY                   = { min = 10,   max = 500,   isServer = true,
         apply = function(v) workspace.Gravity = v end },
-    WALK_SPEED              = { min = 4,    max = 100,  isServer = false },
-    RUN_SPEED               = { min = 4,    max = 200,  isServer = false },
+    WALK_SPEED                = { min = 4,    max = 100,   isServer = false },
+    RUN_SPEED                 = { min = 4,    max = 200,   isServer = false },
+    JUMP_POWER                = { min = 10,   max = 500,   isServer = false },
     -- Jetpack
-    JETPACK_THRUST          = { min = 50,   max = 2000, isServer = false },
-    JETPACK_FORWARD_THRUST  = { min = 50,   max = 2000, isServer = false },
-    JETPACK_MAX_UP_SPEED    = { min = 10,   max = 500,  isServer = false },
-    JETPACK_MAX_HORIZ_SPEED = { min = 10,   max = 500,  isServer = false },
-    -- Collection
-    ORE_MAGNET_RADIUS       = { min = 2,    max = 100,  isServer = false },
-    ORE_COLLECT_RADIUS      = { min = 2,    max = 30,   isServer = false },
-    -- Ore spawning
-    ORE_SPAWN_INTERVAL      = { min = 0.5,  max = 60,   isServer = false },
-    ORE_MAX_COUNT           = { min = 1,    max = 200,  isServer = false },
-    -- Debris
-    DEBRIS_SPAWN_INTERVAL   = { min = 0.5,  max = 60,   isServer = false },
-    DEBRIS_SPAWN_PER_WAVE   = { min = 1,    max = 20,   isServer = false },
-    DEBRIS_CARGO_CHANCE     = { min = 0,    max = 1,    isServer = false },
+    JETPACK_THRUST            = { min = 50,   max = 2000,  isServer = false },
+    JETPACK_FORWARD_THRUST    = { min = 50,   max = 2000,  isServer = false },
+    JETPACK_MAX_UP_SPEED      = { min = 10,   max = 500,   isServer = false },
+    JETPACK_MAX_HORIZ_SPEED   = { min = 10,   max = 500,   isServer = false },
+    JETPACK_ACTIVATION_DELAY  = { min = 0,    max = 3,     isServer = false },
+    -- Laser
+    LASER_DAMAGE              = { min = 1,    max = 10000, isServer = false },
+    LASER_RANGE               = { min = 10,   max = 50000, isServer = false },
+    LASER_COOLDOWN            = { min = 0.02, max = 10,    isServer = false },
     -- Shield
-    SHIELD_RADIUS           = { min = 4,    max = 40,   isServer = false },
-    SHIELD_ENERGY_MAX       = { min = 10,   max = 1000, isServer = false },
-    SHIELD_ENERGY_DRAIN     = { min = 0,    max = 100,  isServer = false },
-    SHIELD_RECHARGE_RATE    = { min = 1,    max = 500,  isServer = false },
-    SHIELD_DAMAGE           = { min = 1,    max = 10000,isServer = false },
+    SHIELD_RADIUS             = { min = 4,    max = 40,    isServer = false },
+    SHIELD_ENERGY_MAX         = { min = 10,   max = 10000, isServer = false },
+    SHIELD_ENERGY_DRAIN       = { min = 0,    max = 100,   isServer = false },
+    SHIELD_RECHARGE_RATE      = { min = 1,    max = 500,   isServer = false },
+    SHIELD_DAMAGE             = { min = 1,    max = 10000, isServer = false },
     -- Tachyite
-    TACHYITE_DROP_CHANCE    = { min = 0,    max = 1,    isServer = false },
-    TACHYITE_SPEED_BONUS    = { min = 0,    max = 200,  isServer = false },
-    TACHYITE_DURATION       = { min = 5,    max = 600,  isServer = false },
+    TACHYITE_DROP_CHANCE      = { min = 0,    max = 1,     isServer = false },
+    TACHYITE_SPEED_BONUS      = { min = 0,    max = 200,   isServer = false },
+    TACHYITE_DURATION         = { min = 5,    max = 600,   isServer = false },
+    -- Debris
+    DEBRIS_SPAWN_INTERVAL     = { min = 0.1,  max = 60,    isServer = false },
+    DEBRIS_SPAWN_PER_WAVE     = { min = 1,    max = 500,   isServer = false },
+    DEBRIS_INITIAL_BURST      = { min = 0,    max = 1000,  isServer = false },
+    DEBRIS_SPEED              = { min = 1,    max = 1000,  isServer = false },
+    DEBRIS_SPAWN_HEIGHT       = { min = 100,  max = 5000,  isServer = false },
+    DEBRIS_HEALTH             = { min = 1,    max = 10000, isServer = false },
+    DEBRIS_LIFETIME           = { min = 5,    max = 600,   isServer = false },
+    DEBRIS_HIT_COOLDOWN       = { min = 0,    max = 5,     isServer = false },
+    DEBRIS_DEATH_PIECES       = { min = 1,    max = 100,   isServer = false },
+    DEBRIS_CARGO_CHANCE       = { min = 0,    max = 1,     isServer = false },
+    DEBRIS_COLLECT_RADIUS     = { min = 1,    max = 200,   isServer = false },
+    -- Collection
+    ORE_MAGNET_RADIUS         = { min = 2,    max = 200,   isServer = false },
+    ORE_COLLECT_RADIUS        = { min = 1,    max = 50,    isServer = false },
+    COLLECTIBLE_LIFETIME      = { min = 5,    max = 3600,  isServer = false },
+    COLLECTIBLE_ROTATION_SPEED= { min = 0,    max = 20,    isServer = false },
+    -- Ore spawning
+    ORE_SPAWN_INTERVAL        = { min = 0.5,  max = 60,    isServer = false },
+    ORE_MAX_COUNT             = { min = 1,    max = 2000,  isServer = false },
+    -- Drones
+    DRONE_SPEED               = { min = 1,    max = 500,   isServer = false },
+    DRONE_CARGO_CAPACITY      = { min = 1,    max = 1000,  isServer = false },
+    DRONE_GUN_RANGE           = { min = 10,   max = 2000,  isServer = false },
+    DRONE_GUN_COOLDOWN        = { min = 0.1,  max = 30,    isServer = false },
+    DRONE_GUN_DAMAGE          = { min = 1,    max = 10000, isServer = false },
+    DRONE_GUARD_RADIUS        = { min = 2,    max = 100,   isServer = false },
+    DRONE_GUARD_HEIGHT        = { min = 2,    max = 100,   isServer = false },
+    DRONE_MAX_HEALTH          = { min = 10,   max = 10000, isServer = false },
+    DRONE_DEBRIS_DAMAGE       = { min = 0,    max = 1000,  isServer = false },
+    DRONE_REPAIR_THRESHOLD    = { min = 1,    max = 1000,  isServer = false },
+    DRONE_REPAIR_RATE         = { min = 0.1,  max = 1000,  isServer = false },
+    ROVER_HOVER_HEIGHT        = { min = 1,    max = 100,   isServer = false },
 }
 
 for _, mat in ipairs(Config.MATERIALS) do
