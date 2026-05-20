@@ -143,7 +143,7 @@ sg.IgnoreGuiInset = true
 sg.Enabled        = false
 sg.Parent         = pg
 
-local PANEL_W  = 360   -- slightly wider to fit info icon
+local PANEL_W  = 420
 local TITLE_H  = 36
 local STATUS_H = 24
 local PAD      = 8
@@ -185,7 +185,7 @@ titleLabel.Parent             = titleBar
 
 local function makeTitleBtn(text, xOffset, bgColor, txtColor)
     local btn = Instance.new("TextButton")
-    btn.Size             = UDim2.new(0, 82, 0, 24)
+    btn.Size             = UDim2.new(0, 96, 0, 24)
     btn.Position         = UDim2.new(1, xOffset, 0.5, -12)
     btn.BackgroundColor3 = bgColor
     btn.BorderSizePixel  = 0
@@ -198,8 +198,8 @@ local function makeTitleBtn(text, xOffset, bgColor, txtColor)
     return btn
 end
 
-local btnReset = makeTitleBtn("↺  RESET",    -174, C.header, C.orange)
-local btnSave  = makeTitleBtn("💾  SAVE DEF", -86,  C.green,  C.bg)
+local btnReset = makeTitleBtn("↺  RESET",       -200, C.header, C.orange)
+local btnSave  = makeTitleBtn("💾  SAVE DEFAULT", -104, C.green,  C.bg)
 
 -- UIStroke on reset button so it's visible against header
 local resetStroke = Instance.new("UIStroke", btnReset)
