@@ -178,7 +178,7 @@ titleLabel.Position           = UDim2.new(0, 10, 0, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Text               = "⚙  ADMIN   [F8/`]"
 titleLabel.Font               = Enum.Font.GothamMedium
-titleLabel.TextSize           = 12
+titleLabel.TextSize           = 14
 titleLabel.TextColor3         = C.neon
 titleLabel.TextXAlignment     = Enum.TextXAlignment.Left
 titleLabel.Parent             = titleBar
@@ -191,7 +191,7 @@ local function makeTitleBtn(text, xOffset, bgColor, txtColor)
     btn.BorderSizePixel  = 0
     btn.Text             = text
     btn.Font             = Enum.Font.GothamMedium
-    btn.TextSize         = 10
+    btn.TextSize         = 13
     btn.TextColor3       = txtColor
     btn.Parent           = titleBar
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
@@ -214,7 +214,7 @@ statusLabel.Position           = UDim2.new(0, 8, 1, -STATUS_H - 2)
 statusLabel.BackgroundTransparency = 1
 statusLabel.Text               = ""
 statusLabel.Font               = Enum.Font.Gotham
-statusLabel.TextSize           = 11
+statusLabel.TextSize           = 13
 statusLabel.TextColor3         = C.green
 statusLabel.TextXAlignment     = Enum.TextXAlignment.Left
 statusLabel.ZIndex             = 10
@@ -266,7 +266,7 @@ ttLabel.Position           = UDim2.new(0, 7, 0, 5)
 ttLabel.BackgroundTransparency = 1
 ttLabel.Text               = ""
 ttLabel.Font               = Enum.Font.Gotham
-ttLabel.TextSize           = 11
+ttLabel.TextSize           = 13
 ttLabel.TextColor3         = Color3.fromRGB(190, 200, 225)
 ttLabel.TextXAlignment     = Enum.TextXAlignment.Left
 ttLabel.TextYAlignment     = Enum.TextYAlignment.Top
@@ -391,7 +391,7 @@ for _, sec in ipairs(SECTIONS) do
     local hl = Instance.new("TextLabel", hdr)
     hl.Size = UDim2.new(1,-8,1,0); hl.Position = UDim2.new(0,8,0,0)
     hl.BackgroundTransparency = 1; hl.Text = sec.title
-    hl.Font = Enum.Font.GothamBold; hl.TextSize = 11
+    hl.Font = Enum.Font.GothamBold; hl.TextSize = 13
     hl.TextColor3 = C.gold; hl.TextXAlignment = Enum.TextXAlignment.Left
     curY = curY + SEC_HDR_H + 6
 
@@ -405,7 +405,7 @@ for _, sec in ipairs(SECTIONS) do
         lbl.BackgroundTransparency = 1
         lbl.Text               = row.label
         lbl.Font               = Enum.Font.Gotham
-        lbl.TextSize           = 11
+        lbl.TextSize           = 13
         lbl.TextColor3         = row.color or C.text
         lbl.TextXAlignment     = Enum.TextXAlignment.Left
         lbl.TextYAlignment     = Enum.TextYAlignment.Center
@@ -432,8 +432,8 @@ for _, sec in ipairs(SECTIONS) do
         valLbl.BackgroundTransparency = 0
         valLbl.BorderSizePixel    = 0
         valLbl.Text               = tostring(LiveConfig[key] or Config[key] or 0)
-        valLbl.Font               = Enum.Font.Gotham
-        valLbl.TextSize           = 12
+        valLbl.Font               = Enum.Font.Code
+        valLbl.TextSize           = 14
         valLbl.TextColor3         = C.neon
         valLbl.TextXAlignment     = Enum.TextXAlignment.Center
         Instance.new("UICorner", valLbl).CornerRadius = UDim.new(0, 4)
@@ -460,13 +460,13 @@ for _, sec in ipairs(SECTIONS) do
         -- ⓘ info icon (only if row has a description)
         if row.desc then
             local info = Instance.new("TextButton", scrollFrame)
-            info.Size             = UDim2.new(0, 16, 0, 16)
-            info.Position         = UDim2.new(0, 298, 0, curY + 6)
+            info.Size             = UDim2.new(0, 20, 0, 20)
+            info.Position         = UDim2.new(0, 296, 0, curY + 4)
             info.BackgroundColor3 = C.header
             info.BorderSizePixel  = 0
             info.Text             = "i"
             info.Font             = Enum.Font.GothamMedium
-            info.TextSize         = 10
+            info.TextSize         = 13
             info.TextColor3       = C.dim
             info.AutoButtonColor  = false
             Instance.new("UICorner", info).CornerRadius = UDim.new(1, 0)
